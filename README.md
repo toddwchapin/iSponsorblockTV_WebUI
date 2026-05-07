@@ -23,15 +23,16 @@ authentication. Use `iSponsorBlockTV --setup` on the Pi if you need LAN scan.
 
 ## Install on a Raspberry Pi
 
+Use `pipx` so the command is on PATH globally and isolated from system Python.
+
 ```bash
-git clone https://github.com/toddwchapin/iSponsorblockTV_WebUI.git
-cd iSponsorblockTV_WebUI
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
+sudo apt install -y pipx git
+pipx ensurepath        # adds ~/.local/bin to PATH; open a new shell after
+git clone https://github.com/toddwchapin/iSponsorblockTV_WebUI.git ~/iSponsorblockTV_WebUI
+pipx install ~/iSponsorblockTV_WebUI
 ```
 
-Run it directly:
+Open a new shell (or `source ~/.bashrc`) so `~/.local/bin` is on PATH, then:
 
 ```bash
 isponsorblocktv-webui
@@ -41,17 +42,53 @@ isponsorblocktv-webui
 The UI reads and writes the same `config.json` iSponsorBlockTV uses (default
 `~/.config/iSponsorBlockTV/config.json`). Override with `WEBUI_DATA_DIR=/path`.
 
-## Run as a systemd user service
+### Reinstall after a `git pull`
 
 ```bash
-mkdir -p ~/.config/systemd/user
-cp systemd/isponsorblocktv-webui.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now isponsorblocktv-webui
+cd ~/iSponsorblockTV_WebUI
+git pull
+pipx reinstall isponsorblocktv-webui
 ```
 
-(Run `loginctl enable-linger $USER` once if you want it to start at boot
-without you logged in.)
+## Run as a systemd service
+
+The shipped unit is a **system** service — it works whether or not anyone is
+logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
+
+1. Confirm the pipx shim exists for the account that ran `pipx install`:
+
+   ```bash
+   ls -l ~/.local/bin/isponsorblocktv-webui
+   ```
+
+2. Edit `systemd/isponsorblocktv-webui.service` and replace **both**
+   occurrences of `REPLACE_ME` with that username (e.g. `dietpi`, `pi`, or
+   `root`). For `root`, change the `ExecStart` path to
+   `/root/.local/bin/isponsorblocktv-webui`.
+
+3. Install the unit:
+
+   ```bash
+   cd ~/iSponsorblockTV_WebUI
+   sudo cp systemd/isponsorblocktv-webui.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now isponsorblocktv-webui
+   ```
+
+4. Verify:
+
+   ```bash
+   systemctl status isponsorblocktv-webui
+   journalctl -u isponsorblocktv-webui -n 50
+   curl -I http://localhost:8080/
+   ```
+
+### DietPi note
+
+DietPi often runs as `root`. That works fine with this **system** unit:
+install with `sudo pipx install ~/iSponsorblockTV_WebUI` (or run `pipx
+install` while logged in as root) and use
+`/root/.local/bin/isponsorblocktv-webui` for `ExecStart`.
 
 ## Restarting the service after a config save
 
