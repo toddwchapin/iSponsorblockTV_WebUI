@@ -11,13 +11,27 @@
   <form hx-post="/pair/code" hx-target="#pair-result" hx-swap="innerHTML">
     <label>
       Pairing code
-      <input type="text" name="code" placeholder="123-456-789-012"
+      <input type="text" name="code" id="pair-code"
+             placeholder="123-456-789-012" maxlength="15"
              inputmode="numeric" autocomplete="off" required />
     </label>
     <button type="submit">Pair</button>
   </form>
   <div id="pair-result"></div>
 </article>
+<script>
+  // Auto-hyphenate the 12-digit pairing code as the user types (issue #15).
+  // Backend pairing._normalize strips hyphens and spaces, so any format works.
+  (function () {
+    const input = document.getElementById('pair-code');
+    if (!input) return;
+    input.addEventListener('input', function (e) {
+      const digits = (e.target.value.match(/\d/g) || []).slice(0, 12).join('');
+      const groups = digits.match(/.{1,3}/g) || [];
+      e.target.value = groups.join('-');
+    });
+  })();
+</script>
 
 <article>
   <header><strong>LAN auto-discovery</strong></header>
