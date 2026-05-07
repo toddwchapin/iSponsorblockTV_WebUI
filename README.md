@@ -37,7 +37,7 @@ confirm the install and run it:
 
 ```bash
 isponsorblocktv-webui --version    # prints e.g. "isponsorblocktv-webui 0.2.0"
-isponsorblocktv-webui              # serves on http://0.0.0.0:8080
+isponsorblocktv-webui              # serves on http://0.0.0.0:8099
 ```
 
 The UI reads and writes the same `config.json` iSponsorBlockTV uses (default
@@ -65,7 +65,7 @@ Verify the version that's actually running:
 ```bash
 isponsorblocktv-webui --version
 # or, with the service running:
-curl -s http://localhost:8080/healthz
+curl -s http://localhost:8099/healthz
 ```
 
 If the version still looks old after `pipx install --force`, double-check
@@ -102,7 +102,7 @@ logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
    ```bash
    systemctl status isponsorblocktv-webui
    journalctl -u isponsorblocktv-webui -n 50
-   curl -s http://localhost:8080/healthz   # {"status":"ok","version":"..."}
+   curl -s http://localhost:8099/healthz   # {"status":"ok","version":"..."}
    ```
 
 ### DietPi note
@@ -181,7 +181,7 @@ Override the unit/container name with `WEBUI_SERVICE_NAME=...`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `WEBUI_HOST` | `0.0.0.0` | Bind address |
-| `WEBUI_PORT` | `8080` | Bind port |
+| `WEBUI_PORT` | `8099` | Bind port |
 | `WEBUI_DATA_DIR` | `~/.config/iSponsorBlockTV` | Where `config.json` lives |
 | `WEBUI_SERVICE_NAME` | `iSponsorBlockTV` | Docker container / systemd unit name |
 | `WEBUI_NO_RESTART` | unset | Set `1` to disable the restart subprocess (dev/tests) |

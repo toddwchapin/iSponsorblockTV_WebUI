@@ -32,4 +32,4 @@ def service_name() -> str:
 
 
 HOST = os.environ.get("WEBUI_HOST", "0.0.0.0")
-PORT = int(os.environ.get("WEBUI_PORT", "8080"))
+PORT = int(os.environ.get("WEBUI_PORT", "8099"))
