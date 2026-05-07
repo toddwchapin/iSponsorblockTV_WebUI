@@ -5,13 +5,17 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/isponsorblocktv-webui
+# Replace REPLACE_ME with the user that owns the pipx install (e.g. dietpi, pi, root).
+User=REPLACE_ME
+# Path to the pipx-installed shim. pipx puts it under that user's home dir.
+# For root, change this to /root/.local/bin/isponsorblocktv-webui.
+ExecStart=/home/REPLACE_ME/.local/bin/isponsorblocktv-webui
 Restart=on-failure
 RestartSec=3
 Environment=WEBUI_HOST=0.0.0.0
 Environment=WEBUI_PORT=8080
-# Set this if iSponsorBlockTV runs under a different unit name:
+# Uncomment and edit if iSponsorBlockTV runs under a different unit/container name:
 # Environment=WEBUI_SERVICE_NAME=iSponsorBlockTV
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
