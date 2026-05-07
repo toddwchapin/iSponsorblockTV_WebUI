@@ -23,6 +23,20 @@ def app_with_tmp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     return main_mod.app, tmp_path
 
 
+def test_no_static_mount(app_with_tmp_config) -> None:
+    """Regression for issue #9.
+
+    The empty `app/static/` dir was never shipped in the wheel because the
+    `static/**/*` package-data glob matched no files. Starlette's
+    `StaticFiles(directory=...)` then raised at app construction on pipx
+    installs. If you re-add real static assets, ship at least one real
+    file and delete this test in the same PR.
+    """
+    app, _ = app_with_tmp_config
+    routes = {getattr(r, "path", None) for r in app.routes}
+    assert "/static" not in routes
+
+
 def test_index_renders_with_no_existing_config(app_with_tmp_config) -> None:
     app, _ = app_with_tmp_config
     client = TestClient(app)

@@ -4,7 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import settings
@@ -19,7 +18,6 @@ TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 def create_app() -> FastAPI:
     app = FastAPI(title="iSponsorBlockTV WebUI", version="0.1.0")
     app.state.templates = TEMPLATES
-    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
     app.include_router(config_route.router)
     app.include_router(pair_route.router, prefix="/pair", tags=["pair"])
     app.include_router(channels_route.router, prefix="/channels", tags=["channels"])
