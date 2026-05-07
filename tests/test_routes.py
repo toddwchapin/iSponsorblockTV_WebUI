@@ -23,6 +23,18 @@ def app_with_tmp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     return main_mod.app, tmp_path
 
 
+def test_healthz_reports_version(app_with_tmp_config) -> None:
+    """Users debug stale-install issues with `curl /healthz`. Don't break it."""
+    from app import __version__
+
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/healthz")
+    assert r.status_code == 200
+    body = r.json()
+    assert body == {"status": "ok", "version": __version__}
+
+
 def test_no_static_mount(app_with_tmp_config) -> None:
     """Regression for issue #9.
 
