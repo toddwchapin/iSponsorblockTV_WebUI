@@ -1,0 +1,24 @@
+{% if hits %}
+<ul style="list-style:none;padding:0;">
+  {% for h in hits %}
+  <li class="search-result">
+    {% if h.thumbnail %}<img src="{{ h.thumbnail }}" class="channel-thumb" alt="" />{% endif %}
+    <div style="flex:1;">
+      <strong>{{ h.name }}</strong><br />
+      <code class="badge">{{ h.id }}</code>
+    </div>
+    {% if h.id in existing_ids %}
+      <span class="badge">already added</span>
+    {% else %}
+      <form hx-post="/channels/add" hx-target="#whitelist" hx-swap="beforeend">
+        <input type="hidden" name="channel_id" value="{{ h.id }}" />
+        <input type="hidden" name="channel_name" value="{{ h.name }}" />
+        <button type="submit">Add</button>
+      </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+  <p class="badge">No matches.</p>
+{% endif %}

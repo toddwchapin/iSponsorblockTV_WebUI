@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Pair Device — iSponsorBlockTV WebUI{% endblock %}
+{% block content %}
+<h1>Pair a YouTube TV device</h1>
+
+<article>
+  <header><strong>Pair with TV code</strong></header>
+  <p class="badge">
+    On the TV: <em>Settings → Link with TV code</em>. Enter the 12-digit code below.
+  </p>
+  <form hx-post="/pair/code" hx-target="#pair-result" hx-swap="innerHTML">
+    <label>
+      Pairing code
+      <input type="text" name="code" placeholder="123-456-789-012"
+             inputmode="numeric" autocomplete="off" required />
+    </label>
+    <button type="submit">Pair</button>
+  </form>
+  <div id="pair-result"></div>
+</article>
+
+<article>
+  <header><strong>LAN auto-discovery</strong></header>
+  <p class="badge">
+    Not yet supported in the web UI — run <code>iSponsorBlockTV --setup</code>
+    on the Pi for LAN scan, or pair with a code above.
+  </p>
+</article>
+{% endblock %}

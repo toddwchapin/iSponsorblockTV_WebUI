@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}iSponsorBlockTV WebUI{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    main.container { max-width: 880px; padding-top: 1rem; }
+    nav ul { list-style: none; }
+    .toast { padding: .5rem .75rem; border-radius: .25rem; margin: .5rem 0; }
+    .toast.ok { background: #14532d; color: #d1fae5; }
+    .toast.err { background: #7f1d1d; color: #fee2e2; }
+    .row-actions { display: flex; gap: .5rem; align-items: center; }
+    .channel-thumb { width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; }
+    .search-result { display: flex; gap: .75rem; align-items: center; padding: .25rem 0; cursor: pointer; }
+    .search-result:hover { background: var(--pico-card-background-color); }
+    .badge { font-size: .8rem; opacity: .7; }
+  </style>
+</head>
+<body>
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>iSponsorBlockTV WebUI</strong></li>
+      </ul>
+      <ul>
+        <li><a href="/">Config</a></li>
+        <li><a href="/pair">Pair Device</a></li>
+        <li><a href="/channels">Channels</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    <div id="toast"></div>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
