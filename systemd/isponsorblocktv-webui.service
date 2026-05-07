@@ -13,7 +13,7 @@ ExecStart=/home/REPLACE_ME/.local/bin/isponsorblocktv-webui
 Restart=on-failure
 RestartSec=3
 Environment=WEBUI_HOST=0.0.0.0
-Environment=WEBUI_PORT=8080
+Environment=WEBUI_PORT=8099
 # Uncomment and edit if iSponsorBlockTV runs under a different unit/container name:
 # Environment=WEBUI_SERVICE_NAME=iSponsorBlockTV
 
