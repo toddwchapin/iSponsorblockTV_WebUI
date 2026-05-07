@@ -32,15 +32,19 @@ git clone https://github.com/toddwchapin/iSponsorblockTV_WebUI.git ~/iSponsorblo
 pipx install ~/iSponsorblockTV_WebUI
 ```
 
-Open a new shell (or `source ~/.bashrc`) so `~/.local/bin` is on PATH, then:
+Open a new shell (or `source ~/.bashrc`) so `~/.local/bin` is on PATH, then
+confirm the install and run it:
 
 ```bash
-isponsorblocktv-webui
-# Opens on http://0.0.0.0:8080
+isponsorblocktv-webui --version    # prints e.g. "isponsorblocktv-webui 0.2.0"
+isponsorblocktv-webui              # serves on http://0.0.0.0:8080
 ```
 
 The UI reads and writes the same `config.json` iSponsorBlockTV uses (default
 `~/.config/iSponsorBlockTV/config.json`). Override with `WEBUI_DATA_DIR=/path`.
+
+While running, `GET /healthz` returns `{"status":"ok","version":"..."}` —
+useful for monitoring or for confirming which version is actually live.
 
 ## Update to the latest version
 
@@ -98,7 +102,7 @@ logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
    ```bash
    systemctl status isponsorblocktv-webui
    journalctl -u isponsorblocktv-webui -n 50
-   curl -I http://localhost:8080/
+   curl -s http://localhost:8080/healthz   # {"status":"ok","version":"..."}
    ```
 
 ### DietPi note
