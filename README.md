@@ -42,13 +42,31 @@ isponsorblocktv-webui
 The UI reads and writes the same `config.json` iSponsorBlockTV uses (default
 `~/.config/iSponsorBlockTV/config.json`). Override with `WEBUI_DATA_DIR=/path`.
 
-### Reinstall after a `git pull`
+## Update to the latest version
+
+`git pull` only updates the source tree on disk. It does **not** touch the
+pipx venv that holds the running binary, so the new code never reaches
+the service. After every pull you must reinstall:
 
 ```bash
 cd ~/iSponsorblockTV_WebUI
 git pull
-pipx reinstall isponsorblocktv-webui
+pipx install --force ~/iSponsorblockTV_WebUI
+# If you have the systemd unit installed:
+sudo systemctl restart isponsorblocktv-webui
 ```
+
+Verify the version that's actually running:
+
+```bash
+isponsorblocktv-webui --version
+# or, with the service running:
+curl -s http://localhost:8080/healthz
+```
+
+If the version still looks old after `pipx install --force`, double-check
+that you ran the command as the same user that did the original
+`pipx install` (the venv lives under that user's home directory).
 
 ## Run as a systemd service
 
