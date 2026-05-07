@@ -90,6 +90,49 @@ install with `sudo pipx install ~/iSponsorblockTV_WebUI` (or run `pipx
 install` while logged in as root) and use
 `/root/.local/bin/isponsorblocktv-webui` for `ExecStart`.
 
+## Uninstall
+
+Run as the same user that did the `pipx install`. The order matters: stop
+the service first, then remove the package, then the repo. Your
+iSponsorBlockTV `config.json` is left untouched.
+
+1. Stop and disable the service (skip if you never installed the unit):
+
+   ```bash
+   sudo systemctl disable --now isponsorblocktv-webui
+   sudo rm /etc/systemd/system/isponsorblocktv-webui.service
+   sudo systemctl daemon-reload
+   ```
+
+2. Remove the package and its venv:
+
+   ```bash
+   pipx uninstall isponsorblocktv-webui
+   ```
+
+   For a root install, run that with `sudo`.
+
+3. Remove the cloned repo:
+
+   ```bash
+   rm -rf ~/iSponsorblockTV_WebUI
+   ```
+
+4. (Optional) Remove the sudoers rule, if you added one for the restart
+   feature:
+
+   ```bash
+   sudo rm /etc/sudoers.d/isponsorblocktv-webui
+   ```
+
+5. (Optional) Delete the iSponsorBlockTV config itself. **This deletes the
+   paired devices and your YouTube API key — only do this if you're also
+   removing iSponsorBlockTV.**
+
+   ```bash
+   rm -rf ~/.config/iSponsorBlockTV
+   ```
+
 ## Restarting the service after a config save
 
 The WebUI tries the following, in order:
