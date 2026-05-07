@@ -1,0 +1,17 @@
+[Unit]
+Description=iSponsorBlockTV WebUI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/isponsorblocktv-webui
+Restart=on-failure
+RestartSec=3
+Environment=WEBUI_HOST=0.0.0.0
+Environment=WEBUI_PORT=8080
+# Set this if iSponsorBlockTV runs under a different unit name:
+# Environment=WEBUI_SERVICE_NAME=iSponsorBlockTV
+
+[Install]
+WantedBy=default.target

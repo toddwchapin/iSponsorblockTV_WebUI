@@ -1,0 +1,16 @@
+<article class="toast ok">
+  <strong>Paired:</strong> {{ device.name }} <code class="badge">{{ device.screen_id }}</code>
+  <form hx-post="/pair/save" hx-target="#pair-result" hx-swap="innerHTML" style="margin-top:.5rem;">
+    <input type="hidden" name="screen_id" value="{{ device.screen_id }}" />
+    <input type="hidden" name="name" value="{{ device.name }}" />
+    <label>
+      Display name
+      <input type="text" name="display_name" value="{{ device.name }}" />
+    </label>
+    <label>
+      Offset (ms)
+      <input type="number" name="offset" value="0" />
+    </label>
+    <button type="submit">Add to config</button>
+  </form>
+</article>

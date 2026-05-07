@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Channels — iSponsorBlockTV WebUI{% endblock %}
+{% block content %}
+<h1>Channel whitelist</h1>
+<p class="badge">Channels in this list bypass ad-blocking. Requires a YouTube Data API key.</p>
+
+{% if not has_api_key %}
+<article class="toast err">
+  No YouTube API key set. Add one on the <a href="/">config page</a> first; otherwise search will fail.
+</article>
+{% endif %}
+
+<article>
+  <header><strong>Search and add</strong></header>
+  <input type="search" name="q" placeholder="Search channel name…"
+         hx-get="/channels/search"
+         hx-trigger="keyup changed delay:400ms, search"
+         hx-target="#channel-results"
+         hx-swap="innerHTML" />
+  <div id="channel-results"></div>
+</article>
+
+<article>
+  <header><strong>Whitelisted ({{ whitelist | length }})</strong></header>
+  <ul id="whitelist">
+    {% for c in whitelist %}
+      {% include "partials/channel_row.html" %}
+    {% else %}
+      <li class="badge">No channels yet.</li>
+    {% endfor %}
+  </ul>
+</article>
+{% endblock %}

@@ -1,0 +1,7 @@
+<li id="wl-{{ c.id }}" class="row-actions">
+  <span><strong>{{ c.name }}</strong> <code class="badge">{{ c.id }}</code></span>
+  <button type="button" class="secondary"
+          hx-delete="/channels/{{ c.id }}"
+          hx-target="#wl-{{ c.id }}"
+          hx-swap="outerHTML">Remove</button>
+</li>

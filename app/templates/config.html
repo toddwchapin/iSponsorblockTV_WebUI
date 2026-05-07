@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Configuration — iSponsorBlockTV WebUI{% endblock %}
+{% block content %}
+<h1>Configuration</h1>
+<p class="badge">Editing <code>{{ config_path }}</code></p>
+
+<form hx-post="/save" hx-target="#toast" hx-swap="outerHTML">
+
+  <article>
+    <header><strong>Devices</strong></header>
+    <p class="badge">Add or remove paired YouTube TV devices. Use <a href="/pair">Pair Device</a> to discover screen IDs.</p>
+    <table id="devices-table">
+      <thead><tr><th>Name</th><th>Screen ID</th><th>Offset (ms)</th><th></th></tr></thead>
+      <tbody id="devices-body">
+        {% for d in cfg.devices %}
+          {% include "partials/device_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="button"
+            hx-get="/devices/blank-row"
+            hx-target="#devices-body"
+            hx-swap="beforeend">+ Add device</button>
+  </article>
+
+  <article>
+    <header><strong>SponsorBlock</strong></header>
+    <fieldset>
+      <legend>Skip categories</legend>
+      {% for cat in all_skip_categories %}
+      <label>
+        <input type="checkbox" name="skip_categories" value="{{ cat }}"
+               {% if cat in cfg.skip_categories %}checked{% endif %} />
+        {{ cat }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    <label>
+      Minimum skip length (seconds)
+      <input type="number" name="minimum_skip_length" min="0" value="{{ cfg.minimum_skip_length }}" />
+    </label>
+    <label>
+      <input type="checkbox" name="skip_count_tracking" {% if cfg.skip_count_tracking %}checked{% endif %} />
+      Report skipped segments to SponsorBlock (anonymized UUID)
+    </label>
+  </article>
+
+  <article>
+    <header><strong>Ads</strong></header>
+    <label>
+      <input type="checkbox" name="mute_ads" {% if cfg.mute_ads %}checked{% endif %} />
+      Mute YouTube native ads
+    </label>
+    <label>
+      <input type="checkbox" name="skip_ads" {% if cfg.skip_ads %}checked{% endif %} />
+      Skip YouTube native ads
+    </label>
+  </article>
+
+  <article>
+    <header><strong>Playback</strong></header>
+    <label>
+      <input type="checkbox" name="auto_play" {% if cfg.auto_play %}checked{% endif %} />
+      Autoplay
+    </label>
+    <label>
+      Join name (shown on TV when this app connects)
+      <input type="text" name="join_name" value="{{ cfg.join_name }}" />
+    </label>
+  </article>
+
+  <article>
+    <header><strong>YouTube Data API</strong></header>
+    <p class="badge">Required only for the channel whitelist search.</p>
+    <label>
+      API key
+      <input type="password" name="apikey" value="{{ cfg.apikey }}"
+             autocomplete="off" placeholder="AIza..." />
+    </label>
+    <label>
+      <input type="checkbox" name="use_proxy" {% if cfg.use_proxy %}checked{% endif %} />
+      Use system-wide proxy
+    </label>
+  </article>
+
+  <button type="submit">Save and restart service</button>
+</form>
+{% endblock %}

@@ -1,0 +1,8 @@
+<tr>
+  <td><input type="text" name="device_name" value="{{ d.name | default('YouTube on TV', true) }}" /></td>
+  <td><input type="text" name="device_screen_id" value="{{ d.screen_id }}" required /></td>
+  <td><input type="number" name="device_offset" value="{{ d.offset | default(0, true) }}" /></td>
+  <td>
+    <button type="button" class="secondary" onclick="this.closest('tr').remove()">Remove</button>
+  </td>
+</tr>
