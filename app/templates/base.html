@@ -5,161 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}iSponsorBlockTV WebUI{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="preload" as="font" type="font/woff2"
+        href="/static/bricolage-grotesque-var.woff2" crossorigin />
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="stylesheet" href="/static/app.css" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <style>
-    /* Mobile viewport hardening: keep page strictly inside the viewport
-       so long device rows / wide containers don't push horizontal scroll
-       (issue #15 round 3 items 7 + 8). */
-    html, body { max-width: 100vw; overflow-x: hidden; }
-    *, *::before, *::after { box-sizing: border-box; }
-
-    main.container { max-width: 1080px; padding-top: 1rem; padding-bottom: 5rem; }
-    nav ul { list-style: none; }
-
-    /* Sticky header + tab bar (issue #15 round 3 items 1-2). */
-    .app-header {
-      position: sticky; top: 0; z-index: 100;
-      background: var(--pico-background-color, #11191f);
-      border-bottom: 1px solid var(--pico-muted-border-color, #444);
-      padding: .5rem 1rem;
-      max-width: 1080px;
-      margin: 0 auto;
-    }
-    .header-row {
-      display: flex; justify-content: space-between; align-items: center;
-      gap: .5rem; flex-wrap: wrap;
-    }
-    .tab-bar {
-      display: flex; gap: .25rem; margin-top: .5rem;
-      overflow-x: auto;
-      border-bottom: 1px solid var(--pico-muted-border-color, #444);
-    }
-    .tab-bar .tab {
-      padding: .4rem .8rem;
-      border-radius: .25rem .25rem 0 0;
-      text-decoration: none;
-      color: var(--pico-color);
-      white-space: nowrap;
-      border-bottom: 2px solid transparent;
-    }
-    .tab-bar .tab:hover { background: var(--pico-card-background-color); }
-    .tab-bar .tab.active {
-      border-bottom-color: var(--pico-primary, #0172ad);
-      font-weight: 600;
-    }
-
-    /* Fixed-bottom action bar (issue #15 round 3 item 3). */
-    .action-bar {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-      background: var(--pico-background-color, #11191f);
-      border-top: 1px solid var(--pico-muted-border-color, #444);
-      padding: .75rem 1rem;
-      display: flex; justify-content: flex-end;
-    }
-    .action-bar button { margin: 0; }
-    .toast { padding: .5rem .75rem; border-radius: .25rem; margin: .5rem 0; }
-    .toast.ok { background: #14532d; color: #d1fae5; }
-    .toast.err { background: #7f1d1d; color: #fee2e2; }
-    .row-actions { display: flex; gap: .5rem; align-items: center; }
-    .channel-thumb { width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; }
-    .search-result { display: flex; gap: .75rem; align-items: center; padding: .25rem 0; cursor: pointer; }
-    .search-result:hover { background: var(--pico-card-background-color); }
-    .badge { font-size: .8rem; opacity: .7; }
-
-    /* Mobile: stack device rows vertically, full-width inputs (issue #15). */
-    @media (max-width: 640px) {
-      #devices-table thead { display: none; }
-      #devices-table,
-      #devices-table tbody,
-      #devices-table tr,
-      #devices-table td { display: block; width: 100%; }
-      #devices-table tr {
-        border-bottom: 1px solid var(--pico-muted-border-color, #ccc);
-        padding: .5rem 0;
-        margin-bottom: .5rem;
-      }
-      #devices-table td { padding: .25rem 0; }
-      #devices-table td::before {
-        display: block;
-        font-size: .8rem;
-        opacity: .7;
-        content: attr(data-label);
-      }
-      #devices-table input[type="text"],
-      #devices-table input[type="number"] { width: 100%; }
-    }
-
-    /* Desktop: device-row column widths — Screen ID wide enough for the
-       full ID; Offset just wide enough for ~5 digits (issue #15 round 2). */
-    @media (min-width: 641px) {
-      #devices-table { table-layout: fixed; }
-      #devices-table .device-screen-id { width: 26rem; }
-      #devices-table .device-screen-id input { width: 100%; }
-      #devices-table .device-offset { width: 7rem; }
-      #devices-table .device-offset input { width: 100%; }
-
-      /* Two-column layout: SponsorBlock on the left, Ads + Playback
-         stacked on the right, top-aligned with SponsorBlock. */
-      .config-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto;
-        column-gap: 1rem;
-        align-items: start;
-      }
-      .config-grid > article { margin-top: 0; }
-      .grid-left        { grid-column: 1; grid-row: 1 / span 2; }
-      .grid-right-top   { grid-column: 2; grid-row: 1; }
-      .grid-right-bottom{ grid-column: 2; grid-row: 2; }
-    }
-
-    /* HTMX indicator: visible only while request in flight (issue #15). */
-    .htmx-indicator { display: none; }
-    .htmx-request .htmx-indicator,
-    .htmx-request.htmx-indicator { display: inline-flex; align-items: center; gap: .5rem; }
-
-    /* Service-status badge + log viewer (issue #4). */
-    .status-badge { display: inline-flex; align-items: center; gap: .4rem;
-      font-size: .8rem; padding: .15rem .5rem; border-radius: 999px;
-      border: 1px solid var(--pico-muted-border-color, #555); }
-    .status-dot { width: .6rem; height: .6rem; border-radius: 50%;
-      background: #6b7280; }
-    .status-badge.ok    .status-dot { background: #22c55e; }
-    .status-badge.warn  .status-dot { background: #f59e0b; }
-    .status-badge.err   .status-dot { background: #ef4444; }
-    .status-badge.unknown .status-dot { background: #6b7280; }
-    .logs-pre { max-height: 60vh; overflow: auto; padding: .75rem;
-      font-size: .8rem; background: var(--pico-card-background-color);
-      border-radius: .25rem; }
-    .logs-pre code { white-space: pre; font-family: ui-monospace, monospace; }
-    .logs-error { color: #f87171; }
-  </style>
 </head>
 <body>
   <header class="app-header">
-    <div class="header-row">
-      <strong>iSponsorBlockTV WebUI</strong>
-      <span id="status-badge"
-            class="status-badge unknown"
-            hx-get="/status/badge"
-            hx-trigger="load, every 5s"
-            hx-swap="outerHTML">
-        <span class="status-dot" aria-hidden="true"></span>
-        checking…
-      </span>
+    <div class="app-header__inner">
+      <div class="header-row">
+        <a class="app-title" href="/" aria-label="iSponsorBlockTV WebUI home">
+          <span class="app-title__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="14" rx="2" />
+              <path d="M8 21h8 M12 18v3" />
+              <circle cx="12" cy="11" r="3" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          iSponsorBlockTV
+        </a>
+        <span id="status-badge"
+              class="status-badge unknown"
+              aria-live="off"
+              hx-get="/status/badge"
+              hx-trigger="load, every 5s"
+              hx-swap="outerHTML">
+          <span class="status-dot" aria-hidden="true"></span>
+          checking…
+        </span>
+      </div>
+      <nav class="tab-bar" aria-label="Sections">
+        <a href="/"         class="tab {% if active == 'config'   %}active{% endif %}"
+           {% if active == 'config'   %}aria-current="page"{% endif %}>Config</a>
+        <a href="/pair"     class="tab {% if active == 'pair'     %}active{% endif %}"
+           {% if active == 'pair'     %}aria-current="page"{% endif %}>Pair Device</a>
+        <a href="/channels" class="tab {% if active == 'channels' %}active{% endif %}"
+           {% if active == 'channels' %}aria-current="page"{% endif %}>Channels</a>
+        <a href="/logs"     class="tab {% if active == 'logs'     %}active{% endif %}"
+           {% if active == 'logs'     %}aria-current="page"{% endif %}>Logs</a>
+      </nav>
     </div>
-    <nav class="tab-bar" aria-label="Sections">
-      <a href="/"         class="tab {% if active == 'config'   %}active{% endif %}">Config</a>
-      <a href="/pair"     class="tab {% if active == 'pair'     %}active{% endif %}">Pair Device</a>
-      <a href="/channels" class="tab {% if active == 'channels' %}active{% endif %}">Channels</a>
-      <a href="/logs"     class="tab {% if active == 'logs'     %}active{% endif %}">Logs</a>
-    </nav>
   </header>
+
   <main class="container">
-    <div id="toast"></div>
+    <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <span id="status-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></span>
     {% block content %}{% endblock %}
   </main>
+
   {% block footer %}{% endblock %}
+
+  <script src="/static/app.js" defer></script>
 </body>
 </html>
