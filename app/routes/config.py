@@ -33,18 +33,6 @@ async def index(request: Request) -> HTMLResponse:
     )
 
 
-@router.get("/devices/blank-row", response_class=HTMLResponse)
-async def blank_device_row(request: Request) -> HTMLResponse:
-    return request.app.state.templates.TemplateResponse(
-        request,
-        "partials/device_row.html",
-        {
-            "d": {"name": "YouTube on TV", "screen_id": "", "offset": 0},
-            "offset_choices": OFFSET_CHOICES,
-        },
-    )
-
-
 @router.post("/save", response_class=HTMLResponse)
 async def save(request: Request) -> HTMLResponse:
     form = await request.form()
