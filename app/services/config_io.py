@@ -44,6 +44,21 @@ ALL_SKIP_CATEGORIES = [
     "music_offtopic",
 ]
 
+# User-facing labels per the SponsorBlock guidelines summary at
+# https://github.com/toddwchapin/iSponsorblockTV_WebUI/wiki/Category-Explanations
+SKIP_CATEGORY_LABELS: dict[str, str] = {
+    "sponsor":          "Sponsor",
+    "selfpromo":        "Unpaid/Self Promotion",
+    "exclusive_access": "Exclusive Access",
+    "interaction":      "Interaction Reminder",
+    "poi_highlight":    "Highlight",
+    "intro":            "Intermission/Intro Animation",
+    "outro":            "Endcards/Credits",
+    "preview":          "Preview/Recap",
+    "filler":           "Tangents/Jokes",
+    "music_offtopic":   "Music: Non-Music Section",
+}
+
 
 def load(path: Path | None = None) -> dict[str, Any]:
     """Load config, merging on top of DEFAULTS. Missing file → defaults."""

@@ -28,21 +28,24 @@
         {% endfor %}
       </tbody>
     </table>
-    <a href="/pair" role="button" class="secondary outline">+ Pair a new device</a>
   </article>
 
   <div class="config-grid">
     <article class="grid-left">
       <header><strong>Skip Categories</strong></header>
       <div class="skip-grid">
-        {% for cat in all_skip_categories | sort %}
+        {% for slug, label in skip_category_choices %}
         <label>
-          <input type="checkbox" name="skip_categories" value="{{ cat }}"
-                 {% if cat in cfg.skip_categories %}checked{% endif %} />
-          {{ cat }}
+          <input type="checkbox" name="skip_categories" value="{{ slug }}"
+                 {% if slug in cfg.skip_categories %}checked{% endif %} />
+          {{ label }}
         </label>
         {% endfor %}
       </div>
+      <p class="caption">
+        <a href="https://github.com/toddwchapin/iSponsorblockTV_WebUI/wiki/Category-Explanations"
+           target="_blank" rel="noopener">Explanation of categories</a>
+      </p>
     </article>
 
     <article class="grid-right">

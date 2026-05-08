@@ -218,9 +218,9 @@ def test_screen_id_hidden_in_form(app_with_tmp_config) -> None:
     assert 'class="device-screen-id"' not in body
     # No readonly attr anywhere on the form (hidden inputs don't take it).
     assert "readonly" not in body
-    # "+ Pair a new device" link replaces the old "+ Add device" button.
-    assert 'href="/pair"' in body
-    assert "+ Pair a new device" in body
+    # Round 6 item 2: redundant "+ Pair a new device" link removed; the
+    # Pair Device tab in the header is now the sole discovery path.
+    assert "+ Pair a new device" not in body
 
 
 def test_config_page_uses_two_column_grid(app_with_tmp_config) -> None:
@@ -324,24 +324,28 @@ def test_round4_offset_select_round_trips_through_save(app_with_tmp_config) -> N
     assert on_disk["minimum_skip_length"] == 5
 
 
-def test_round5_skip_categories_sorted(app_with_tmp_config) -> None:
-    """Round 5 item C1: skip categories render alphabetically.
+def test_round6_skip_categories_sorted_by_label(app_with_tmp_config) -> None:
+    """Round 6 item 10: skip categories render alphabetically by display label.
 
-    Canonical order in config_io.ALL_SKIP_CATEGORIES has 'sponsor' first
-    and 'selfpromo' second; alphabetical pushes 'exclusive_access' before
-    both. The rendered value="..." attributes on each checkbox preserve
-    the iteration order, so we can find them in the body and confirm.
+    Labels (see config_io.SKIP_CATEGORY_LABELS) sort to:
+        Endcards/Credits (outro) < Exclusive Access (exclusive_access)
+        < Highlight (poi_highlight) < Intermission/Intro Animation (intro)
+        < Interaction Reminder (interaction) < ... < Sponsor (sponsor)
+        < Tangents/Jokes (filler) < Unpaid/Self Promotion (selfpromo)
     """
     app, _ = app_with_tmp_config
     client = TestClient(app)
     r = client.get("/")
     body = r.text
+    i_outro = body.index('value="outro"')
     i_excl = body.index('value="exclusive_access"')
-    i_filler = body.index('value="filler"')
     i_intro = body.index('value="intro"')
     i_sponsor = body.index('value="sponsor"')
-    # Alphabetical: exclusive_access < filler < intro < sponsor.
-    assert i_excl < i_filler < i_intro < i_sponsor
+    i_filler = body.index('value="filler"')
+    i_selfpromo = body.index('value="selfpromo"')
+    # By label: Endcards/Credits < Exclusive Access < Intermission/Intro
+    # < Sponsor < Tangents/Jokes < Unpaid/Self Promotion.
+    assert i_outro < i_excl < i_intro < i_sponsor < i_filler < i_selfpromo
 
 
 def test_round5_dropdown_unit_suffixes(app_with_tmp_config) -> None:

@@ -320,7 +320,7 @@ input[readonly] {
 
   /* offset cell already block-stacks via the mobile #devices-table rule;
      keep dropdown + Remove side-by-side. */
-  #devices-table .offset-controls select { width: 7rem; flex: 0 0 auto; }
+  #devices-table .offset-controls select { width: 9rem; flex: 0 0 auto; }
   #devices-table .offset-controls button { flex: 0 0 auto; }
 }
 
@@ -364,7 +364,7 @@ input[readonly] {
   justify-content: space-between;
   gap: var(--space-2);
 }
-.offset-controls select { width: 7rem; margin: 0; }
+.offset-controls select { width: 9rem; margin: 0; }
 .offset-controls button { margin: 0; }
 
 /* ----- HTMX in-flight indicator ----- */
@@ -417,6 +417,9 @@ input[readonly] {
   font-family: var(--font-mono);
 }
 .logs-error { color: var(--status-err); }
+/* Equal-width logs action buttons (issue #15 round 6 item 6).
+   9.5rem fits "Resume refresh" without wrapping. */
+#logs-form button { min-width: 9.5rem; }
 
 /* ----- reduced motion ----- */
 @media (prefers-reduced-motion: reduce) {

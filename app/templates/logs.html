@@ -9,16 +9,17 @@
 <p class="caption">
   Project links:
   <a href="https://github.com/toddwchapin/iSponsorblockTV_WebUI" target="_blank" rel="noopener">iSponsorBlockTV Web UI</a> ·
-  <a href="https://github.com/dmunozv04/iSponsorBlockTV" target="_blank" rel="noopener">iSponsorBlockTV</a>
+  <a href="https://github.com/dmunozv04/iSponsorBlockTV" target="_blank" rel="noopener">iSponsorBlockTV</a> ·
+  <a href="https://sponsor.ajay.app" target="_blank" rel="noopener">SponsorBlock API</a>
 </p>
 
 <form id="logs-form" class="row-actions" method="get" action="/logs">
   <label for="logs-n">Lines</label>
   <input id="logs-n" name="n" type="number" min="1" max="5000" value="{{ n }}"
          style="max-width: 6rem;" />
-  <button type="submit">Refresh</button>
+  <button type="submit" class="secondary">Refresh</button>
   <button type="button" id="logs-pause-btn" class="secondary" aria-pressed="false">Pause refresh</button>
-  <button type="button" id="logs-copy-btn" class="secondary">Copy</button>
+  <button type="button" id="logs-copy-btn" class="secondary">Copy logs</button>
 </form>
 
 {% include "partials/logs_tail.html" %}
@@ -49,12 +50,11 @@
     const text = pre ? pre.textContent : '';
     try {
       await navigator.clipboard.writeText(text);
-      const original = copyBtn.textContent;
       copyBtn.textContent = 'Copied';
-      setTimeout(() => { copyBtn.textContent = original; }, 1500);
+      setTimeout(() => { copyBtn.textContent = 'Copy logs'; }, 1500);
     } catch {
       copyBtn.textContent = 'Copy failed';
-      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+      setTimeout(() => { copyBtn.textContent = 'Copy logs'; }, 2000);
     }
   });
 })();
