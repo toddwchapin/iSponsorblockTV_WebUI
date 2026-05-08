@@ -341,19 +341,24 @@ input[readonly] {
   .grid-right { grid-column: 2; grid-row: 1; }
 }
 
-/* ----- skip-categories two-column grid (issue #15 round 4 item 8) -----
-   Round 5: keep 2 columns even on narrow viewports — drop the 1-col
-   collapse and tighten article padding so two columns fit on phones. */
+/* ----- skip-categories two-column flow (issue #15 round 4 item 8) -----
+   Round 5: keep 2 columns even on narrow viewports.
+   Round 6: column-major fill — readers go down the left column then
+   continue at the top of the right column, matching natural reading
+   order for an alphabetical list. */
 .skip-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-1) var(--space-3);
+  column-count: 2;
+  column-gap: var(--space-3);
   margin: var(--space-2) 0;
 }
-.skip-grid label { margin: 0; }
+.skip-grid label {
+  display: block;
+  break-inside: avoid;
+  margin: 0 0 var(--space-1) 0;
+}
 @media (max-width: 640px) {
   .grid-left { padding-inline: var(--space-2); }
-  .skip-grid { gap: var(--space-1) var(--space-2); }
+  .skip-grid { column-gap: var(--space-2); }
   .skip-grid label { font-size: var(--fs-sm); }
 }
 
