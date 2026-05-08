@@ -83,8 +83,19 @@ logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
    ls -l ~/.local/bin/isponsorblocktv-webui
    ```
 
-2. Edit `systemd/isponsorblocktv-webui.service`. Two lines reference the
-   account that owns the pipx install — both must be updated:
+2. Edit the unit file inside the cloned repo. Its full path is:
+
+   ```
+   ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
+   ```
+
+   (If you cloned to a different location, substitute that path
+   throughout this section. For a `root` install where you cloned to
+   `/root/iSponsorblockTV_WebUI`, the path is
+   `/root/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service`.)
+
+   Two lines reference the account that owns the pipx install — both
+   must be updated:
 
    ```ini
    User=REPLACE_ME
@@ -101,25 +112,29 @@ logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
    | `dietpi` | `User=dietpi` | `ExecStart=/home/dietpi/.local/bin/isponsorblocktv-webui` |
    | `root` | `User=root` | `ExecStart=/root/.local/bin/isponsorblocktv-webui` |
 
-   One-shot edits — pick the line that matches your account:
+   One-shot edits — pick the line that matches your account. These use
+   the full path so you can run them from anywhere:
 
    ```bash
    # Regular user (replace 'pi' with your account if different)
-   sed -i 's|REPLACE_ME|pi|g' systemd/isponsorblocktv-webui.service
+   sed -i 's|REPLACE_ME|pi|g' \
+       ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
 
-   # Root (note the second sed: /home/root → /root)
-   sed -i -e 's|REPLACE_ME|root|g' \
-          -e 's|/home/root/|/root/|' systemd/isponsorblocktv-webui.service
+   # Root (note the second sed rewrites /home/root → /root)
+   sudo sed -i -e 's|REPLACE_ME|root|g' \
+               -e 's|/home/root/|/root/|' \
+               /root/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
    ```
 
    Verify the file before installing it:
 
    ```bash
-   grep -E '^(User|ExecStart)=' systemd/isponsorblocktv-webui.service
+   grep -E '^(User|ExecStart)=' \
+       ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
    # Expected (pi):
    #   User=pi
    #   ExecStart=/home/pi/.local/bin/isponsorblocktv-webui
-   # Expected (root):
+   # Expected (root, run as root or with sudo, against /root/...):
    #   User=root
    #   ExecStart=/root/.local/bin/isponsorblocktv-webui
    ```
@@ -127,11 +142,14 @@ logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
 3. Install the unit:
 
    ```bash
-   cd ~/iSponsorblockTV_WebUI
-   sudo cp systemd/isponsorblocktv-webui.service /etc/systemd/system/
+   sudo cp ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service \
+           /etc/systemd/system/
    sudo systemctl daemon-reload
    sudo systemctl enable --now isponsorblocktv-webui
    ```
+
+   For a `root` install, replace `~/iSponsorblockTV_WebUI` with
+   `/root/iSponsorblockTV_WebUI` in the `cp` source path above.
 
 4. Verify:
 
