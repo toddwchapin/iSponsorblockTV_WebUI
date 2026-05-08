@@ -35,6 +35,46 @@ def test_healthz_reports_version(app_with_tmp_config) -> None:
     assert body == {"status": "ok", "version": __version__}
 
 
+def test_favicon_svg_served(app_with_tmp_config) -> None:
+    """Issue #18: /favicon.svg returns the bundled icon."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/favicon.svg")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/svg+xml")
+    assert b"<svg" in r.content
+
+
+def test_favicon_ico_served_as_svg(app_with_tmp_config) -> None:
+    """Issue #18: legacy /favicon.ico probe gets the same SVG, not 404."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/favicon.ico")
+    assert r.status_code == 200
+    assert b"<svg" in r.content
+
+
+def test_apple_touch_icon_returns_204(app_with_tmp_config) -> None:
+    """Issue #18: iOS apple-touch-icon probes get 204, not 404."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    for path in ("/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"):
+        r = client.get(path)
+        assert r.status_code == 204, path
+        assert r.content == b""
+
+
+def test_index_links_favicon(app_with_tmp_config) -> None:
+    """Issue #18: base.html declares the SVG favicon so browsers stop
+    probing /favicon.ico in the first place."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert 'rel="icon"' in r.text
+    assert '/favicon.svg' in r.text
+
+
 def test_no_static_mount(app_with_tmp_config) -> None:
     """Regression for issue #9.
 

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="iSponsorBlockTV WebUI">
+  <rect width="64" height="64" rx="12" fill="#0e1729"/>
+  <rect x="10" y="22" width="44" height="20" rx="3" fill="none" stroke="#7df0a4" stroke-width="3"/>
+  <rect x="20" y="48" width="24" height="3" fill="#7df0a4"/>
+  <path d="M22 32 L34 32 M40 28 L40 36 M44 28 L44 36" stroke="#7df0a4" stroke-width="3" stroke-linecap="round" fill="none"/>
+</svg>
