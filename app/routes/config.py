@@ -11,6 +11,9 @@ from app.services import config_io, restart as restart_service, service_status
 
 router = APIRouter()
 
+OFFSET_CHOICES = list(range(-2000, 2001, 250))
+MIN_SKIP_CHOICES = [0, 1, 2, 3, 5, 10, 30, 60]
+
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
@@ -22,6 +25,8 @@ async def index(request: Request) -> HTMLResponse:
             "cfg": cfg,
             "config_path": str(settings.config_path()),
             "all_skip_categories": config_io.ALL_SKIP_CATEGORIES,
+            "offset_choices": OFFSET_CHOICES,
+            "min_skip_choices": MIN_SKIP_CHOICES,
             "st": service_status.status(),
             "active": "config",
         },
@@ -33,7 +38,10 @@ async def blank_device_row(request: Request) -> HTMLResponse:
     return request.app.state.templates.TemplateResponse(
         request,
         "partials/device_row.html",
-        {"d": {"name": "YouTube on TV", "screen_id": "", "offset": 0}},
+        {
+            "d": {"name": "YouTube on TV", "screen_id": "", "offset": 0},
+            "offset_choices": OFFSET_CHOICES,
+        },
     )
 
 

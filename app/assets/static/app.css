@@ -58,7 +58,12 @@
 
   /* Chrome surfaces — measured, not magic. */
   --action-bar-h: 4rem;
+  --header-h:     6.25rem;
   --content-max:  1080px;
+
+  /* Affordance: editable inputs get a soft shadow; readonly inputs get nothing. */
+  --shadow-input: 0 1px 2px rgba(0, 0, 0, .06),
+                  0 1px 3px color-mix(in oklab, var(--accent-500) 18%, transparent);
 
   /* Type families. */
   --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system,
@@ -101,9 +106,13 @@ body {
   font-feature-settings: "ss01", "ss02";
 }
 
-/* ----- layout: chrome bands span full width, content stays capped ----- */
+/* ----- layout: chrome bands span full width, content stays capped -----
+   Header is `fixed` (not `sticky`) because `html, body { overflow-x: hidden }`
+   above creates an implicit scroll container that breaks `position: sticky`
+   for descendants in some browsers. `fixed` is deterministic; we pad <main>
+   below to compensate. */
 .app-header {
-  position: sticky; top: 0; z-index: 100;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   width: 100%;
   background: var(--bg-page);
   border-bottom: 1px solid var(--border);
@@ -182,7 +191,7 @@ body {
 
 main.container {
   max-width: var(--content-max);
-  padding-top: var(--space-4);
+  padding-top: calc(var(--header-h) + var(--space-4));
   padding-bottom: calc(var(--action-bar-h) + var(--space-4));
 }
 
@@ -205,8 +214,25 @@ article > header strong {
 input[type="number"], input.tabular,
 .logs-pre, .logs-pre code,
 #devices-table .device-offset input,
+#devices-table .device-offset select,
 #devices-table .device-screen-id input {
   font-variant-numeric: tabular-nums;
+}
+
+/* ----- editable vs readonly affordance (issue #15 round 4 item 4) -----
+   Editable inputs get a soft accent-tinted shadow. Readonly inputs strip
+   their border + background so the value reads as plain text. */
+input[type="text"]:not([readonly]),
+input[type="number"]:not([readonly]),
+select {
+  box-shadow: var(--shadow-input);
+}
+input[readonly] {
+  border: none;
+  background: transparent;
+  padding-left: 0;
+  box-shadow: none;
+  cursor: default;
 }
 
 /* split former `.badge` into intent-specific styles. Keep `.badge` as alias
@@ -288,10 +314,16 @@ input[type="number"], input.tabular,
   #devices-table input[type="number"] { width: 100%; }
 
   /* mobile chrome: title shrinks, badge stays inline. */
+  :root { --header-h: 5.75rem; }
   .header-row { gap: var(--space-1); }
   .app-title  { font-size: var(--fs-base); }
   .action-bar__inner { justify-content: stretch; }
   .action-bar button { flex: 1; }
+
+  /* offset cell already block-stacks via the mobile #devices-table rule;
+     keep dropdown + Remove side-by-side. */
+  #devices-table .offset-controls select { width: 7rem; flex: 0 0 auto; }
+  #devices-table .offset-controls button { flex: 0 0 auto; }
 }
 
 /* ----- desktop: device-row column widths + config grid ----- */
@@ -299,21 +331,41 @@ input[type="number"], input.tabular,
   #devices-table { table-layout: fixed; }
   #devices-table .device-screen-id { width: 26rem; }
   #devices-table .device-screen-id input { width: 100%; }
-  #devices-table .device-offset { width: 7rem; }
-  #devices-table .device-offset input { width: 100%; }
+  /* Offset cell now also holds the Remove button — see .offset-controls. */
+  #devices-table .device-offset-row { width: 18rem; }
 
   .config-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
     column-gap: var(--space-4);
     align-items: start;
   }
   .config-grid > article { margin-top: 0; }
-  .grid-left         { grid-column: 1; grid-row: 1 / span 2; }
-  .grid-right-top    { grid-column: 2; grid-row: 1; }
-  .grid-right-bottom { grid-column: 2; grid-row: 2; }
+  .grid-left  { grid-column: 1; grid-row: 1; }
+  .grid-right { grid-column: 2; grid-row: 1; }
 }
+
+/* ----- skip-categories two-column grid (issue #15 round 4 item 8) ----- */
+.skip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0;
+}
+.skip-grid label { margin: 0; }
+@media (max-width: 480px) {
+  .skip-grid { grid-template-columns: 1fr; }
+}
+
+/* ----- device offset cell: dropdown + Remove (issue #15 round 4 item 5) ----- */
+.offset-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.offset-controls select { width: 7rem; margin: 0; }
+.offset-controls button { margin: 0; }
 
 /* ----- HTMX in-flight indicator ----- */
 .htmx-indicator { display: none; }
