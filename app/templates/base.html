@@ -40,6 +40,11 @@
       #devices-table input[type="text"],
       #devices-table input[type="number"] { width: 100%; }
     }
+
+    /* HTMX indicator: visible only while request in flight (issue #15). */
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator,
+    .htmx-request.htmx-indicator { display: inline-flex; align-items: center; gap: .5rem; }
   </style>
 </head>
 <body>

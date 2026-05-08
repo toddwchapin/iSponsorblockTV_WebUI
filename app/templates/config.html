@@ -4,7 +4,12 @@
 <h1>Configuration</h1>
 <p class="badge">Editing <code>{{ config_path }}</code></p>
 
-<form hx-post="/save" hx-target="#toast" hx-swap="outerHTML">
+<form id="config-form"
+      hx-post="/save"
+      hx-target="#toast"
+      hx-swap="outerHTML"
+      hx-disabled-elt="#save-btn"
+      hx-indicator="#save-indicator">
 
   <article>
     <header><strong>Devices</strong></header>
@@ -83,6 +88,68 @@
     </label>
   </article>
 
-  <button type="submit">Save and restart service</button>
+  <div class="row-actions">
+    <button id="save-btn" type="submit">Save and restart service</button>
+    <span id="save-indicator" class="htmx-indicator" aria-live="polite">
+      <span aria-busy="true">Saving and restarting&hellip;</span>
+    </span>
+  </div>
 </form>
+
+<script>
+(function () {
+  const form = document.getElementById('config-form');
+  const btn = document.getElementById('save-btn');
+
+  function renderToast(cls, msg) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.className = 'toast ' + cls;
+    el.textContent = msg;
+  }
+
+  // Only fires when the request never reached the server (network error,
+  // WebUI itself dropped). HTTP 4xx/5xx with a body go through the normal
+  // afterRequest path and the existing toast partial.
+  form.addEventListener('htmx:sendError', function () {
+    renderToast('ok', 'Restart in progress, status unknown — checking…');
+    btn.setAttribute('aria-busy', 'true');
+    btn.disabled = true;
+
+    const start = Date.now();
+    const deadlineMs = 10000;
+    function tick() {
+      fetch('/healthz', { cache: 'no-store' })
+        .then(function (r) {
+          if (r && r.ok) {
+            renderToast(
+              'ok',
+              'WebUI is back. Verify iSponsorBlockTV with: ' +
+              'systemctl status iSponsorBlockTV'
+            );
+            btn.removeAttribute('aria-busy');
+            btn.disabled = false;
+            return;
+          }
+          schedule();
+        })
+        .catch(schedule);
+    }
+    function schedule() {
+      if (Date.now() - start >= deadlineMs) {
+        renderToast(
+          'err',
+          'Status unknown after 10s. Check the service manually: ' +
+          'systemctl status iSponsorBlockTV'
+        );
+        btn.removeAttribute('aria-busy');
+        btn.disabled = false;
+        return;
+      }
+      setTimeout(tick, 1000);
+    }
+    tick();
+  });
+})();
+</script>
 {% endblock %}

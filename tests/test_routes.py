@@ -88,6 +88,37 @@ def test_save_persists_config(app_with_tmp_config) -> None:
     assert "selfpromo" in on_disk["skip_categories"]
 
 
+def test_save_writes_to_settings_config_path(app_with_tmp_config) -> None:
+    """Issue #15 comment B: /save writes the file iSponsorBlockTV reads."""
+    from app import settings
+
+    app, tmp = app_with_tmp_config
+    assert settings.config_path() == tmp / "config.json"
+    client = TestClient(app)
+    r = client.post("/save", data={"device_screen_id": "x"})
+    assert r.status_code == 200
+    assert settings.config_path().exists()
+
+
+def test_index_reads_existing_config(app_with_tmp_config) -> None:
+    """Issue #15 comment D: GET / reflects what's on disk at config_path()."""
+    app, tmp = app_with_tmp_config
+    (tmp / "config.json").write_text(
+        json.dumps(
+            {
+                "apikey": "PRELOADED_KEY_123",
+                "devices": [{"screen_id": "scr-pre", "name": "Pre", "offset": 42}],
+                "mute_ads": True,
+            }
+        )
+    )
+    client = TestClient(app)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "PRELOADED_KEY_123" in r.text
+    assert "scr-pre" in r.text
+
+
 def test_blank_device_row(app_with_tmp_config) -> None:
     app, _ = app_with_tmp_config
     client = TestClient(app)
