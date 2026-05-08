@@ -19,9 +19,24 @@ async def index(request: Request) -> HTMLResponse:
         {
             "whitelist": cfg.get("channel_whitelist", []),
             "has_api_key": bool(cfg.get("apikey")),
+            "use_proxy": bool(cfg.get("use_proxy", False)),
             "active": "channels",
         },
     )
+
+
+@router.post("/apikey", response_class=HTMLResponse)
+async def save_apikey(
+    request: Request,
+    apikey: str = Form(""),
+    use_proxy: str = Form(""),
+) -> HTMLResponse:
+    cfg = config_io.load()
+    cfg["apikey"] = apikey.strip()
+    cfg["use_proxy"] = (use_proxy == "on")
+    config_io.save(cfg)
+    msg = "API key saved." if cfg["apikey"] else "API key cleared."
+    return HTMLResponse(f'<div class="toast ok">{msg}</div>')
 
 
 @router.get("/search", response_class=HTMLResponse)

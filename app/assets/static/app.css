@@ -1,0 +1,376 @@
+/* ============================================================
+   iSponsorBlockTV WebUI — design tokens + layout
+   See issue #25 for the design audit that drove this file.
+   ============================================================ */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/static/bricolage-grotesque-var.woff2") format("woff2-variations"),
+       url("/static/bricolage-grotesque-var.woff2") format("woff2");
+}
+
+/* ----- design tokens ----- */
+:root {
+  /* Accent ramp: terracotta. Distinct from status-ok (green),
+     status-err (red), and status-warn (amber). */
+  --accent-50:  #fdf3ee;
+  --accent-100: #fbe2d4;
+  --accent-200: #f5b896;
+  --accent-300: #ee9266;
+  --accent-400: #e57842;
+  --accent-500: #dc6d4a;  /* anchor */
+  --accent-600: #b8552f;
+  --accent-700: #8c3f22;
+  --accent-800: #5c2916;
+  --accent-900: #321408;
+
+  /* Status palette — kept separate from accent on purpose. */
+  --status-ok:   #22c55e;
+  --status-warn: #f59e0b;
+  --status-err:  #ef4444;
+  --status-mute: #6b7280;
+
+  /* Toast surfaces (dark + light variants). */
+  --toast-ok-bg:   #14532d;
+  --toast-ok-fg:   #d1fae5;
+  --toast-err-bg:  #7f1d1d;
+  --toast-err-fg:  #fee2e2;
+
+  /* Type scale. */
+  --fs-xs:   .75rem;
+  --fs-sm:   .85rem;
+  --fs-base: 1rem;
+  --fs-md:   1.125rem;
+  --fs-lg:   1.375rem;
+  --fs-xl:   2rem;
+  --fs-2xl:  2.75rem;
+
+  /* Spacing primitives the layout uses repeatedly. */
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
+  /* Chrome surfaces — measured, not magic. */
+  --action-bar-h: 4rem;
+  --content-max:  1080px;
+
+  /* Type families. */
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system,
+                  "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-body:    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+                  Helvetica, Arial, sans-serif;
+  --font-mono:    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono",
+                  monospace;
+
+  /* Pico bridge: prefer Pico's variables but supply opinionated fallbacks
+     so the chrome can't lose its surface if Pico ever renames a token. */
+  --bg-page:    var(--pico-background-color, #11191f);
+  --bg-surface: var(--pico-card-background-color, #1a232b);
+  --fg-text:    var(--pico-color, #e7eef4);
+  --fg-muted:   color-mix(in oklab, var(--fg-text) 65%, transparent);
+  --border:     var(--pico-muted-border-color, #36434f);
+
+  /* Motion. */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur-fast: 140ms;
+  --dur-med:  220ms;
+}
+
+/* Light-mode overrides for surfaces that hardcoded dark hex literals.
+   Pico's auto-mode sets [data-theme="light"] (or no attribute + light prefers). */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --toast-ok-bg:  #d1fae5;
+    --toast-ok-fg:  #065f46;
+    --toast-err-bg: #fee2e2;
+    --toast-err-fg: #7f1d1d;
+  }
+}
+
+/* ----- viewport hardening (audit §4 / issue #15 round 3) ----- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { max-width: 100vw; overflow-x: hidden; }
+body {
+  font-family: var(--font-body);
+  font-feature-settings: "ss01", "ss02";
+}
+
+/* ----- layout: chrome bands span full width, content stays capped ----- */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  width: 100%;
+  background: var(--bg-page);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-2) 0 0;
+  backdrop-filter: blur(8px);
+}
+.app-header__inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+.header-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: var(--space-2); padding-bottom: var(--space-2);
+}
+.app-title {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variation-settings: "opsz" 24, "wght" 600;
+  font-size: var(--fs-md);
+  letter-spacing: -.01em;
+  color: var(--fg-text);
+  text-decoration: none;
+}
+.app-title__mark {
+  width: 1.4rem; height: 1.4rem; display: inline-block;
+}
+.app-title__mark svg { width: 100%; height: 100%; display: block; }
+
+.tab-bar {
+  display: flex; gap: var(--space-1); margin-top: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+.tab-bar .tab {
+  padding: var(--space-2) var(--space-4);
+  border-radius: .375rem .375rem 0 0;
+  text-decoration: none;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 14, "wght" 500;
+  font-size: var(--fs-sm);
+  letter-spacing: .01em;
+  transition: color var(--dur-fast) var(--ease),
+              border-bottom-color var(--dur-fast) var(--ease),
+              background var(--dur-fast) var(--ease);
+}
+.tab-bar .tab:hover { color: var(--fg-text); background: var(--bg-surface); }
+.tab-bar .tab.active {
+  color: var(--fg-text);
+  border-bottom-color: var(--accent-500);
+  font-variation-settings: "opsz" 14, "wght" 600;
+}
+
+.action-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  width: 100%;
+  background: var(--bg-page);
+  border-top: 1px solid var(--border);
+  min-height: var(--action-bar-h);
+  display: flex; align-items: center;
+  backdrop-filter: blur(8px);
+}
+.action-bar__inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex; justify-content: flex-end; gap: var(--space-3);
+  width: 100%;
+}
+.action-bar button { margin: 0; }
+
+main.container {
+  max-width: var(--content-max);
+  padding-top: var(--space-4);
+  padding-bottom: calc(var(--action-bar-h) + var(--space-4));
+}
+
+/* ----- typography ----- */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -.015em;
+  font-variation-settings: "opsz" 32, "wght" 600;
+}
+h1 { font-size: var(--fs-2xl); line-height: 1.05; }
+h2 { font-size: var(--fs-xl); line-height: 1.1; }
+h3 { font-size: var(--fs-lg); line-height: 1.2; }
+article > header strong {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 18, "wght" 600;
+  font-size: var(--fs-md);
+  letter-spacing: -.005em;
+}
+
+input[type="number"], input.tabular,
+.logs-pre, .logs-pre code,
+#devices-table .device-offset input,
+#devices-table .device-screen-id input {
+  font-variant-numeric: tabular-nums;
+}
+
+/* split former `.badge` into intent-specific styles. Keep `.badge` as alias
+   so existing markup keeps working. */
+.help, .caption, .badge {
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+}
+.help    { display: block; margin-top: var(--space-1); }
+.caption { display: block; margin-bottom: var(--space-2); }
+
+/* ----- focus rings ----- */
+:focus-visible {
+  outline: 2px solid var(--accent-400);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ----- toasts ----- */
+.toast {
+  padding: var(--space-2) var(--space-3);
+  border-radius: .375rem;
+  margin: var(--space-2) 0;
+  border: 1px solid transparent;
+  animation: toast-enter var(--dur-med) var(--ease);
+}
+.toast.ok  { background: var(--toast-ok-bg);  color: var(--toast-ok-fg);  border-color: color-mix(in oklab, var(--toast-ok-fg)  30%, transparent); }
+.toast.err { background: var(--toast-err-bg); color: var(--toast-err-fg); border-color: color-mix(in oklab, var(--toast-err-fg) 30%, transparent); }
+
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ----- misc ----- */
+.row-actions { display: flex; gap: var(--space-2); align-items: center; }
+.channel-thumb { width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; }
+.search-result {
+  display: flex; gap: var(--space-3); align-items: center;
+  padding: var(--space-1) 0; cursor: pointer; border-radius: .25rem;
+  transition: background var(--dur-fast) var(--ease);
+}
+.search-result:hover { background: var(--bg-surface); }
+
+/* ----- empty-state callout (audit §7) ----- */
+.callout {
+  border: 1px dashed var(--accent-500);
+  background: color-mix(in oklab, var(--accent-500) 8%, transparent);
+  border-radius: .5rem;
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+}
+.callout strong {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 18, "wght" 600;
+  display: block; margin-bottom: var(--space-2);
+}
+
+/* ----- mobile: stack device rows vertically ----- */
+@media (max-width: 640px) {
+  #devices-table thead { display: none; }
+  #devices-table,
+  #devices-table tbody,
+  #devices-table tr,
+  #devices-table td { display: block; width: 100%; }
+  #devices-table tr {
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-2) 0;
+    margin-bottom: var(--space-2);
+  }
+  #devices-table td { padding: var(--space-1) 0; }
+  #devices-table td::before {
+    display: block;
+    font-size: var(--fs-xs);
+    color: var(--fg-muted);
+    content: attr(data-label);
+  }
+  #devices-table input[type="text"],
+  #devices-table input[type="number"] { width: 100%; }
+
+  /* mobile chrome: title shrinks, badge stays inline. */
+  .header-row { gap: var(--space-1); }
+  .app-title  { font-size: var(--fs-base); }
+  .action-bar__inner { justify-content: stretch; }
+  .action-bar button { flex: 1; }
+}
+
+/* ----- desktop: device-row column widths + config grid ----- */
+@media (min-width: 641px) {
+  #devices-table { table-layout: fixed; }
+  #devices-table .device-screen-id { width: 26rem; }
+  #devices-table .device-screen-id input { width: 100%; }
+  #devices-table .device-offset { width: 7rem; }
+  #devices-table .device-offset input { width: 100%; }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    column-gap: var(--space-4);
+    align-items: start;
+  }
+  .config-grid > article { margin-top: 0; }
+  .grid-left         { grid-column: 1; grid-row: 1 / span 2; }
+  .grid-right-top    { grid-column: 2; grid-row: 1; }
+  .grid-right-bottom { grid-column: 2; grid-row: 2; }
+}
+
+/* ----- HTMX in-flight indicator ----- */
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+/* ----- service-status badge ----- */
+.status-badge {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 14, "wght" 500;
+  font-size: var(--fs-xs);
+  padding: .15rem .55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.status-dot {
+  width: .6rem; height: .6rem; border-radius: 50%;
+  background: var(--status-mute);
+  transition: background var(--dur-med) var(--ease);
+}
+.status-badge.ok      .status-dot { background: var(--status-ok); }
+.status-badge.warn    .status-dot { background: var(--status-warn); }
+.status-badge.err     .status-dot { background: var(--status-err); }
+.status-badge.unknown .status-dot { background: var(--status-mute); }
+.status-badge.ok      { border-color: color-mix(in oklab, var(--status-ok)   40%, var(--border)); }
+.status-badge.err     { border-color: color-mix(in oklab, var(--status-err)  40%, var(--border)); }
+
+/* visually-hidden announcer (audit §6 a11y). */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ----- logs viewer ----- */
+.logs-pre {
+  max-height: 60vh; overflow: auto;
+  padding: var(--space-3);
+  font-size: var(--fs-xs);
+  background: var(--bg-surface);
+  border-radius: .375rem;
+}
+.logs-pre code {
+  white-space: pre;
+  font-family: var(--font-mono);
+}
+.logs-error { color: var(--status-err); }
+
+/* ----- reduced motion ----- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

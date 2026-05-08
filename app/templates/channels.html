@@ -2,22 +2,57 @@
 {% block title %}Channels — iSponsorBlockTV WebUI{% endblock %}
 {% block content %}
 <h1>Channel whitelist</h1>
-<p class="badge">Channels in this list bypass ad-blocking. Requires a YouTube Data API key.</p>
+<p class="caption">
+  Channels in this list bypass ad-blocking. Requires a YouTube Data API key.
+</p>
 
-{% if not has_api_key %}
-<article class="toast err">
-  No YouTube API key set. Add one on the <a href="/">config page</a> first; otherwise search will fail.
+<article>
+  <header><strong>YouTube Data API</strong></header>
+  <p class="caption">
+    Used only for the channel-name search below. Without a key the rest of the
+    app still works.
+  </p>
+  <form hx-post="/channels/apikey"
+        hx-target="#apikey-toast"
+        hx-swap="innerHTML">
+    <label>
+      API key
+      <input type="password" name="apikey"
+             value="{{ '' if not has_api_key else '' }}"
+             placeholder="{{ 'AIza... (key set — leave blank to keep, or paste a new key)' if has_api_key else 'AIza...' }}"
+             autocomplete="off" />
+      <small class="help">
+        {% if has_api_key %}
+          A key is currently saved. Submitting this form with a value replaces
+          it; submitting blank clears it.
+        {% else %}
+          Paste a Google Cloud API key with YouTube Data API v3 enabled.
+        {% endif %}
+      </small>
+    </label>
+    <label>
+      <input type="checkbox" name="use_proxy" {% if use_proxy %}checked{% endif %} />
+      Use system-wide proxy when calling the YouTube Data API
+    </label>
+    <button type="submit">Save API settings</button>
+  </form>
+  <div id="apikey-toast" aria-live="polite"></div>
 </article>
-{% endif %}
 
 <article>
   <header><strong>Search and add</strong></header>
-  <input type="search" name="q" placeholder="Search channel name…"
-         hx-get="/channels/search"
-         hx-trigger="keyup changed delay:400ms, search"
-         hx-target="#channel-results"
-         hx-swap="innerHTML" />
-  <div id="channel-results"></div>
+  {% if has_api_key %}
+    <input type="search" name="q" placeholder="Search channel name…"
+           hx-get="/channels/search"
+           hx-trigger="keyup changed delay:400ms, search"
+           hx-target="#channel-results"
+           hx-swap="innerHTML" />
+    <div id="channel-results"></div>
+  {% else %}
+    <p class="help">
+      Set a YouTube Data API key above to enable search.
+    </p>
+  {% endif %}
 </article>
 
 <article>
@@ -26,7 +61,7 @@
     {% for c in whitelist %}
       {% include "partials/channel_row.html" %}
     {% else %}
-      <li class="badge">No channels yet.</li>
+      <li class="caption">No channels yet.</li>
     {% endfor %}
   </ul>
 </article>

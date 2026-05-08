@@ -75,18 +75,18 @@ def test_index_links_favicon(app_with_tmp_config) -> None:
     assert '/favicon.svg' in r.text
 
 
-def test_no_static_mount(app_with_tmp_config) -> None:
-    """Regression for issue #9.
+def test_static_mount_serves_app_css(app_with_tmp_config) -> None:
+    """Issue #25: app.css and the bundled woff2 must be reachable.
 
-    The empty `app/static/` dir was never shipped in the wheel because the
-    `static/**/*` package-data glob matched no files. Starlette's
-    `StaticFiles(directory=...)` then raised at app construction on pipx
-    installs. If you re-add real static assets, ship at least one real
-    file and delete this test in the same PR.
+    Replaces the old "no static mount" test (issue #9 regression). The mount
+    is safe now because real files ship in app/assets/static/ — the original
+    bug was an empty dir packaged via a glob that matched nothing.
     """
     app, _ = app_with_tmp_config
-    routes = {getattr(r, "path", None) for r in app.routes}
-    assert "/static" not in routes
+    client = TestClient(app)
+    r = client.get("/static/app.css")
+    assert r.status_code == 200
+    assert "iSponsorBlockTV WebUI" in r.text  # token-block header comment
 
 
 def test_index_renders_with_no_existing_config(app_with_tmp_config) -> None:
@@ -99,7 +99,14 @@ def test_index_renders_with_no_existing_config(app_with_tmp_config) -> None:
 
 
 def test_save_persists_config(app_with_tmp_config) -> None:
+    """The /save form covers devices + sponsorblock/ads/playback. apikey and
+    use_proxy are managed via /channels (issue #25 IA cleanup) and must be
+    preserved across saves that don't touch them."""
     app, tmp = app_with_tmp_config
+    # Pre-seed apikey on disk so we can verify /save preserves it.
+    (tmp / "config.json").write_text(
+        json.dumps({"apikey": "preserved-key", "use_proxy": True})
+    )
     client = TestClient(app)
     r = client.post(
         "/save",
@@ -113,19 +120,38 @@ def test_save_persists_config(app_with_tmp_config) -> None:
             "mute_ads": "on",
             "auto_play": "on",
             "join_name": "iSponsorBlockTV",
-            "apikey": "test-key",
         },
     )
     assert r.status_code == 200
     assert "Saved" in r.text
     on_disk = json.loads((tmp / "config.json").read_text())
-    assert on_disk["apikey"] == "test-key"
+    assert on_disk["apikey"] == "preserved-key"
+    assert on_disk["use_proxy"] is True
     assert on_disk["devices"] == [
         {"screen_id": "screen-xyz", "name": "Living", "offset": 100}
     ]
     assert on_disk["mute_ads"] is True
     assert on_disk["skip_ads"] is False
     assert "selfpromo" in on_disk["skip_categories"]
+
+
+def test_channels_apikey_save(app_with_tmp_config) -> None:
+    """Issue #25 IA: API key now lives on /channels with its own endpoint."""
+    app, tmp = app_with_tmp_config
+    client = TestClient(app)
+    r = client.post("/channels/apikey", data={"apikey": "AIzaSetByMe", "use_proxy": "on"})
+    assert r.status_code == 200
+    assert "API key saved" in r.text
+    on_disk = json.loads((tmp / "config.json").read_text())
+    assert on_disk["apikey"] == "AIzaSetByMe"
+    assert on_disk["use_proxy"] is True
+
+    r = client.post("/channels/apikey", data={"apikey": ""})
+    assert r.status_code == 200
+    assert "API key cleared" in r.text
+    on_disk = json.loads((tmp / "config.json").read_text())
+    assert on_disk["apikey"] == ""
+    assert on_disk["use_proxy"] is False
 
 
 def test_save_writes_to_settings_config_path(app_with_tmp_config) -> None:
@@ -141,7 +167,8 @@ def test_save_writes_to_settings_config_path(app_with_tmp_config) -> None:
 
 
 def test_index_reads_existing_config(app_with_tmp_config) -> None:
-    """Issue #15 comment D: GET / reflects what's on disk at config_path()."""
+    """Issue #15 comment D: GET / reflects what's on disk at config_path().
+    apikey moved to /channels in issue #25, so verify it there."""
     app, tmp = app_with_tmp_config
     (tmp / "config.json").write_text(
         json.dumps(
@@ -155,8 +182,11 @@ def test_index_reads_existing_config(app_with_tmp_config) -> None:
     client = TestClient(app)
     r = client.get("/")
     assert r.status_code == 200
-    assert "PRELOADED_KEY_123" in r.text
     assert "scr-pre" in r.text
+    # apikey lives on /channels now.
+    r2 = client.get("/channels")
+    assert r2.status_code == 200
+    assert "key is currently saved" in r2.text
 
 
 def test_blank_device_row(app_with_tmp_config) -> None:
@@ -197,11 +227,15 @@ def test_config_page_uses_two_column_grid(app_with_tmp_config) -> None:
 
 
 def test_channels_page_warns_when_no_apikey(app_with_tmp_config) -> None:
+    """Issue #25 IA: when no key is set, the search input is hidden and
+    the help text explains how to enable it."""
     app, _ = app_with_tmp_config
     client = TestClient(app)
     r = client.get("/channels")
     assert r.status_code == 200
-    assert "No YouTube API key" in r.text
+    assert "Set a YouTube Data API key" in r.text
+    # The search input must NOT render when no key is set.
+    assert 'name="q"' not in r.text
 
 
 def test_channels_remove_404_when_missing(app_with_tmp_config) -> None:

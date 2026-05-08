@@ -2,7 +2,16 @@
 {% block title %}Configuration — iSponsorBlockTV WebUI{% endblock %}
 {% block content %}
 <h1>Configuration</h1>
-<p class="badge">Editing <code>{{ config_path }}</code></p>
+<p class="caption">Editing <code>{{ config_path }}</code></p>
+
+{% if not cfg.devices %}
+<div class="callout">
+  <strong>Quick start</strong>
+  No devices configured yet. Open <a href="/pair">Pair Device</a> to discover a
+  YouTube TV screen ID, then return here to tune SponsorBlock and ad-skip
+  behavior. Click <em>Save and restart service</em> to apply.
+</div>
+{% endif %}
 
 <form id="config-form"
       hx-post="/save"
@@ -11,7 +20,7 @@
 
   <article>
     <header><strong>Devices</strong></header>
-    <p class="badge">Add or remove paired YouTube TV devices. Use <a href="/pair">Pair Device</a> to discover screen IDs.</p>
+    <p class="caption">Add or remove paired YouTube TV devices. Use <a href="/pair">Pair Device</a> to discover screen IDs.</p>
     <table id="devices-table">
       <thead><tr><th>Name</th><th>Screen ID</th><th>Offset (ms)</th><th></th></tr></thead>
       <tbody id="devices-body">
@@ -73,180 +82,9 @@
       </label>
     </article>
   </div>
-
-  <article>
-    <header><strong>YouTube Data API</strong></header>
-    <p class="badge">Required only for the channel whitelist search.</p>
-    <label>
-      API key
-      <input type="password" name="apikey" value="{{ cfg.apikey }}"
-             autocomplete="off" placeholder="AIza..." />
-    </label>
-    <label>
-      <input type="checkbox" name="use_proxy" {% if cfg.use_proxy %}checked{% endif %} />
-      Use system-wide proxy
-    </label>
-  </article>
-
 </form>
 
-<script>
-(function () {
-  const RESTART_LABEL = 'Save and restart service';
-  const START_LABEL = 'Start service';
-  const SAVING_LABEL = 'Saving and restarting…';
-  const STARTING_LABEL = 'Starting…';
-  const POLL_DEADLINE_MS = 10000;
-  const MIN_VISIBLE_MS = 1500;
-  const POLL_INTERVAL_MS = 1000;
-
-  const form = document.getElementById('config-form');
-  const btn = document.getElementById('save-btn');
-  let busyStart = 0;
-  let pollAbort = false;
-
-  function idleLabel() {
-    return btn.dataset.mode === 'start' ? START_LABEL : RESTART_LABEL;
-  }
-  function busyLabel() {
-    return btn.dataset.mode === 'start' ? STARTING_LABEL : SAVING_LABEL;
-  }
-
-  function setBusy(state) {
-    if (state) {
-      btn.setAttribute('aria-busy', 'true');
-      btn.disabled = true;
-      btn.textContent = busyLabel();
-    } else {
-      btn.removeAttribute('aria-busy');
-      // Successful save settles the form: service should now be running, so
-      // switch to restart mode. Re-disable + re-arm the dirty gate unless
-      // we're in the no-detection legacy fallback (always-enabled).
-      btn.dataset.mode = 'restart';
-      btn.textContent = idleLabel();
-      if (btn.dataset.noDirtyGate === '1') {
-        btn.disabled = false;
-      } else {
-        btn.disabled = true;
-        armDirtyTracker();
-      }
-    }
-  }
-
-  function enableForDirty() {
-    btn.disabled = false;
-  }
-  function armDirtyTracker() {
-    // Skip when no dirty gate applies: start-service mode (always enabled)
-    // or detection-method=none fallback (always enabled so user isn't locked out).
-    if (btn.dataset.noDirtyGate === '1') return;
-    form.addEventListener('input', enableForDirty, { once: true });
-    form.addEventListener('change', enableForDirty, { once: true });
-  }
-  armDirtyTracker();
-
-  function renderToast(cls, msg) {
-    const el = document.getElementById('toast');
-    if (!el) return;
-    el.className = 'toast ' + cls;
-    el.textContent = msg;
-  }
-
-  function finishBusy() {
-    pollAbort = true;
-    const elapsed = Date.now() - busyStart;
-    const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
-    setTimeout(() => setBusy(false), wait);
-  }
-
-  form.addEventListener('htmx:beforeRequest', function () {
-    busyStart = Date.now();
-    pollAbort = false;
-    setBusy(true);
-  });
-
-  form.addEventListener('htmx:afterRequest', function (evt) {
-    const xhr = evt.detail && evt.detail.xhr;
-    if (!xhr || xhr.status < 200 || xhr.status >= 300) {
-      // Non-2xx response: toast partial already rendered; just reset.
-      finishBusy();
-      return;
-    }
-    pollStatusUntilSettled();
-  });
-
-  // Network-level failure (WebUI dropped, DNS, etc.). HTTP errors go
-  // through afterRequest with the toast partial.
-  form.addEventListener('htmx:sendError', function () {
-    pollHealthzUntilBack();
-  });
-
-  function pollStatusUntilSettled() {
-    const start = busyStart;
-    function tick() {
-      if (pollAbort) return;
-      fetch('/status', { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : null)
-        .then(s => {
-          const elapsed = Date.now() - start;
-          if (s && s.running === true) {
-            finishBusy();
-            return;
-          }
-          if (s && s.method === 'none') {
-            // No way to confirm — trust the toast and reset.
-            finishBusy();
-            return;
-          }
-          if (elapsed >= POLL_DEADLINE_MS) {
-            renderToast('err',
-              'Service status unknown after 10s — open the Logs page to investigate.');
-            finishBusy();
-            return;
-          }
-          setTimeout(tick, POLL_INTERVAL_MS);
-        })
-        .catch(() => {
-          if (Date.now() - start >= POLL_DEADLINE_MS) {
-            finishBusy();
-            return;
-          }
-          setTimeout(tick, POLL_INTERVAL_MS);
-        });
-    }
-    tick();
-  }
-
-  function pollHealthzUntilBack() {
-    renderToast('ok', 'Restart in progress, status unknown — checking…');
-    const start = busyStart || Date.now();
-    function tick() {
-      if (pollAbort) return;
-      fetch('/healthz', { cache: 'no-store' })
-        .then(r => {
-          if (r && r.ok) {
-            renderToast('ok',
-              'WebUI is back. Verify iSponsorBlockTV with: systemctl status iSponsorBlockTV');
-            finishBusy();
-            return;
-          }
-          schedule();
-        })
-        .catch(schedule);
-    }
-    function schedule() {
-      if (Date.now() - start >= POLL_DEADLINE_MS) {
-        renderToast('err',
-          'Status unknown after 10s. Check: systemctl status iSponsorBlockTV');
-        finishBusy();
-        return;
-      }
-      setTimeout(tick, POLL_INTERVAL_MS);
-    }
-    tick();
-  }
-})();
-</script>
+<script src="/static/config.js" defer></script>
 {% endblock %}
 
 {% block footer %}
@@ -254,13 +92,15 @@
 {% set f_known      = st.method != 'none' %}
 {% set f_start_mode = f_known and not f_running %}
 <div class="action-bar">
-  <button id="save-btn"
-          type="submit"
-          form="config-form"
-          data-mode="{{ 'start' if f_start_mode else 'restart' }}"
-          {% if f_start_mode or not f_known %}data-no-dirty-gate="1"{% endif %}
-          {% if f_known and not f_start_mode %}disabled{% endif %}>
-    {% if f_start_mode %}Start service{% else %}Save and restart service{% endif %}
-  </button>
+  <div class="action-bar__inner">
+    <button id="save-btn"
+            type="submit"
+            form="config-form"
+            data-mode="{{ 'start' if f_start_mode else 'restart' }}"
+            {% if f_start_mode or not f_known %}data-no-dirty-gate="1"{% endif %}
+            {% if f_known and not f_start_mode %}disabled{% endif %}>
+      {% if f_start_mode %}Start service{% else %}Save and restart service{% endif %}
+    </button>
+  </div>
 </div>
 {% endblock %}
