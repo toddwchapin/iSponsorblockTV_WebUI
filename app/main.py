@@ -6,7 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 
 from app import __version__, settings
@@ -16,6 +17,8 @@ from app.routes import pair as pair_route
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+ASSETS = BASE_DIR / "assets"
+FAVICON_SVG = ASSETS / "favicon.svg"
 
 
 def create_app() -> FastAPI:
@@ -25,6 +28,16 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> FileResponse:
+        return FileResponse(FAVICON_SVG, media_type="image/svg+xml")
+
+    @app.get("/apple-touch-icon.png", include_in_schema=False)
+    @app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+    async def apple_touch_icon() -> Response:
+        return Response(status_code=204)
 
     app.include_router(config_route.router)
     app.include_router(pair_route.router, prefix="/pair", tags=["pair"])
