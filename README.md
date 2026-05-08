@@ -176,6 +176,26 @@ manually.
 
 Override the unit/container name with `WEBUI_SERVICE_NAME=...`.
 
+## Service status badge and log tail (`/logs`)
+
+The header shows a green/amber/grey status badge polled every 5s from
+`GET /status`. The `Logs` page (`/logs`) tails the service log using the
+same detection chain: `docker logs --tail`, then
+`journalctl --user -u iSponsorBlockTV -n N`, then
+`sudo -n journalctl -u iSponsorBlockTV -n N`.
+
+If you use the system-unit path, extend the existing NOPASSWD rule so the
+WebUI can also read logs without a password. Scope it tightly:
+
+```
+# /etc/sudoers.d/isponsorblocktv-webui
+pi ALL=(root) NOPASSWD: /bin/systemctl restart iSponsorBlockTV
+pi ALL=(root) NOPASSWD: /bin/journalctl -u iSponsorBlockTV *
+```
+
+Without that second line, `/logs` falls back to a friendly "no log source
+available" notice instead of 500'ing.
+
 ## Environment variables
 
 | Variable | Default | Purpose |
@@ -193,8 +213,9 @@ Override the unit/container name with `WEBUI_SERVICE_NAME=...`.
   is not trusted.
 - The YouTube API key is masked in the form but stored in plaintext in
   `config.json` (this is what upstream does too).
-- If you use the sudoers route, scope the rule to *only* the
-  `systemctl restart iSponsorBlockTV` command — never give blanket sudo.
+- If you use the sudoers route, scope the rules to *only* the
+  `systemctl restart iSponsorBlockTV` and
+  `journalctl -u iSponsorBlockTV *` commands — never give blanket sudo.
 
 ## Development
 

@@ -206,6 +206,51 @@ def test_pair_code_rejects_short_code(app_with_tmp_config) -> None:
     assert "12 digits" in r.text
 
 
+def test_status_endpoint_shape(app_with_tmp_config) -> None:
+    """Issue #4: GET /status returns method + running + detail."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/status")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body.keys()) == {"method", "running", "detail"}
+    assert isinstance(body["running"], bool)
+
+
+def test_status_badge_partial(app_with_tmp_config) -> None:
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/status/badge")
+    assert r.status_code == 200
+    assert "status-badge" in r.text
+    assert 'hx-get="/status/badge"' in r.text
+
+
+def test_logs_page_renders(app_with_tmp_config) -> None:
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/logs")
+    assert r.status_code == 200
+    assert "Service logs" in r.text
+
+
+def test_logs_tail_partial(app_with_tmp_config) -> None:
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/logs/tail?n=10")
+    assert r.status_code == 200
+    assert 'id="logs-tail"' in r.text
+
+
+def test_logs_link_in_nav(app_with_tmp_config) -> None:
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert 'href="/logs"' in r.text
+    assert 'id="status-badge"' in r.text
+
+
 def test_pair_save_appends_device(app_with_tmp_config) -> None:
     app, tmp = app_with_tmp_config
     client = TestClient(app)

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Logs — iSponsorBlockTV WebUI{% endblock %}
+{% block content %}
+<h1>Service logs</h1>
+<p class="badge">
+  Tail of the iSponsorBlockTV service. Auto-refreshes every 5s.
+  Detection chain: docker → <code>journalctl --user</code> → <code>sudo journalctl</code>.
+</p>
+
+<form id="logs-form" class="row-actions" method="get" action="/logs">
+  <label for="logs-n">Lines</label>
+  <input id="logs-n" name="n" type="number" min="1" max="5000" value="{{ n }}"
+         style="max-width: 8rem;" />
+  <button type="submit">Refresh</button>
+</form>
+
+{% include "partials/logs_tail.html" %}
+
+{% endblock %}
