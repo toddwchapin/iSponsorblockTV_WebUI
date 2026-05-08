@@ -1,6 +1,6 @@
 """Restart the iSponsorBlockTV service after a config save.
 
-Detection order:
+Detection order (mirrored in :mod:`app.services.service_status`):
 1. Docker container `iSponsorBlockTV` running → docker restart
 2. Systemd user unit active → systemctl --user restart
 3. Sudo systemctl restart (system-wide) — requires NOPASSWD sudoers rule
@@ -8,12 +8,15 @@ Detection order:
 from __future__ import annotations
 
 import logging
-import os
-import shutil
 import subprocess
 from dataclasses import dataclass
 
 from app import settings
+from app.services.service_status import (
+    can_sudo_systemctl,
+    docker_container_running,
+    systemctl_user_state,
+)
 
 log = logging.getLogger(__name__)
 
@@ -36,15 +39,15 @@ def restart() -> RestartResult:
 
     name = settings.service_name()
 
-    if _docker_container_running(name):
+    if docker_container_running(name):
         log.info("restart: docker container %s detected", name)
         return _run(["docker", "restart", name], "docker")
 
-    if _systemd_user_unit_active(name):
+    if systemctl_user_state(name) == "active":
         log.info("restart: systemd user unit %s active", name)
         return _run(["systemctl", "--user", "restart", name], "systemd-user")
 
-    if _can_sudo_systemctl():
+    if can_sudo_systemctl():
         log.info("restart: passwordless sudo available, using systemctl restart %s", name)
         return _run(["sudo", "-n", "systemctl", "restart", name], "systemd-system")
 
@@ -57,56 +60,6 @@ def restart() -> RestartResult:
             "restart the service manually"
         ),
     )
-
-
-def _docker_container_running(name: str) -> bool:
-    if not os.path.exists("/var/run/docker.sock"):
-        return False
-    docker = shutil.which("docker")
-    if not docker:
-        return False
-    try:
-        out = subprocess.run(
-            [docker, "ps", "--filter", f"name=^{name}$", "--format", "{{.Names}}"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as e:
-        log.warning("docker ps failed: %s", e)
-        return False
-    return name in out.stdout.strip().splitlines()
-
-
-def _systemd_user_unit_active(name: str) -> bool:
-    systemctl = shutil.which("systemctl")
-    if not systemctl:
-        return False
-    try:
-        out = subprocess.run(
-            [systemctl, "--user", "is-active", name],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return out.stdout.strip() == "active"
-
-
-def _can_sudo_systemctl() -> bool:
-    sudo = shutil.which("sudo")
-    if not sudo:
-        return False
-    try:
-        out = subprocess.run(
-            [sudo, "-n", "true"], capture_output=True, timeout=3, check=False
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return out.returncode == 0
 
 
 def _run(cmd: list[str], method: str) -> RestartResult:

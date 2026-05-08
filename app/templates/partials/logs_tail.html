@@ -1,0 +1,15 @@
+<div id="logs-tail"
+     hx-get="/logs/tail?n={{ n }}"
+     hx-trigger="every 5s"
+     hx-swap="outerHTML">
+  <p class="badge">
+    Source: <code>{{ result.method }}</code>
+    {% if result.error %} — <span class="logs-error">{{ result.error }}</span>{% endif %}
+  </p>
+  {% if result.lines %}
+  <pre class="logs-pre"><code>{% for line in result.lines %}{{ line }}
+{% endfor %}</code></pre>
+  {% elif not result.error %}
+  <p class="badge">No log lines returned.</p>
+  {% endif %}
+</div>

@@ -46,6 +46,21 @@
     .htmx-indicator { display: none; }
     .htmx-request .htmx-indicator,
     .htmx-request.htmx-indicator { display: inline-flex; align-items: center; gap: .5rem; }
+
+    /* Service-status badge + log viewer (issue #4). */
+    .status-badge { display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .8rem; padding: .15rem .5rem; border-radius: 999px;
+      border: 1px solid var(--pico-muted-border-color, #555); }
+    .status-dot { width: .6rem; height: .6rem; border-radius: 50%;
+      background: #6b7280; }
+    .status-badge.ok    .status-dot { background: #22c55e; }
+    .status-badge.warn  .status-dot { background: #f59e0b; }
+    .status-badge.unknown .status-dot { background: #6b7280; }
+    .logs-pre { max-height: 60vh; overflow: auto; padding: .75rem;
+      font-size: .8rem; background: var(--pico-card-background-color);
+      border-radius: .25rem; }
+    .logs-pre code { white-space: pre; font-family: ui-monospace, monospace; }
+    .logs-error { color: #f87171; }
   </style>
 </head>
 <body>
@@ -53,11 +68,22 @@
     <nav>
       <ul>
         <li><strong>iSponsorBlockTV WebUI</strong></li>
+        <li>
+          <span id="status-badge"
+                class="status-badge unknown"
+                hx-get="/status/badge"
+                hx-trigger="load, every 5s"
+                hx-swap="outerHTML">
+            <span class="status-dot" aria-hidden="true"></span>
+            checking…
+          </span>
+        </li>
       </ul>
       <ul>
         <li><a href="/">Config</a></li>
         <li><a href="/pair">Pair Device</a></li>
         <li><a href="/channels">Channels</a></li>
+        <li><a href="/logs">Logs</a></li>
       </ul>
     </nav>
   </header>

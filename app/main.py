@@ -14,6 +14,7 @@ from app import __version__, settings
 from app.routes import channels as channels_route
 from app.routes import config as config_route
 from app.routes import pair as pair_route
+from app.routes import status as status_route
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(config_route.router)
     app.include_router(pair_route.router, prefix="/pair", tags=["pair"])
     app.include_router(channels_route.router, prefix="/channels", tags=["channels"])
+    app.include_router(status_route.router, tags=["status"])
     return app
 
 
