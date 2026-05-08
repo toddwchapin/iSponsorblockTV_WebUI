@@ -20,9 +20,8 @@
 
   <article>
     <header><strong>Devices</strong></header>
-    <p class="caption">Add or remove paired YouTube TV devices. Use <a href="/pair">Pair Device</a> to discover screen IDs.</p>
     <table id="devices-table">
-      <thead><tr><th>Name</th><th>Screen ID</th><th>Offset (ms)</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Screen ID</th><th>Offset (ms)</th></tr></thead>
       <tbody id="devices-body">
         {% for d in cfg.devices %}
           {% include "partials/device_row.html" %}
@@ -37,9 +36,8 @@
 
   <div class="config-grid">
     <article class="grid-left">
-      <header><strong>SponsorBlock</strong></header>
-      <fieldset>
-        <legend>Skip categories</legend>
+      <header><strong>Skip Categories</strong></header>
+      <div class="skip-grid">
         {% for cat in all_skip_categories %}
         <label>
           <input type="checkbox" name="skip_categories" value="{{ cat }}"
@@ -47,19 +45,11 @@
           {{ cat }}
         </label>
         {% endfor %}
-      </fieldset>
-      <label>
-        Minimum skip length (seconds)
-        <input type="number" name="minimum_skip_length" min="0" value="{{ cfg.minimum_skip_length }}" />
-      </label>
-      <label>
-        <input type="checkbox" name="skip_count_tracking" {% if cfg.skip_count_tracking %}checked{% endif %} />
-        Report skipped segments to SponsorBlock (anonymized UUID)
-      </label>
+      </div>
     </article>
 
-    <article class="grid-right-top">
-      <header><strong>Ads</strong></header>
+    <article class="grid-right">
+      <header><strong>Other settings</strong></header>
       <label>
         <input type="checkbox" name="mute_ads" {% if cfg.mute_ads %}checked{% endif %} />
         Mute YouTube native ads
@@ -68,13 +58,21 @@
         <input type="checkbox" name="skip_ads" {% if cfg.skip_ads %}checked{% endif %} />
         Skip YouTube native ads
       </label>
-    </article>
-
-    <article class="grid-right-bottom">
-      <header><strong>Playback</strong></header>
       <label>
         <input type="checkbox" name="auto_play" {% if cfg.auto_play %}checked{% endif %} />
         Autoplay
+      </label>
+      <label>
+        <input type="checkbox" name="skip_count_tracking" {% if cfg.skip_count_tracking %}checked{% endif %} />
+        Report skipped segments to SponsorBlock (anonymized UUID)
+      </label>
+      <label>
+        Minimum skip length (seconds)
+        <select name="minimum_skip_length">
+          {% for v in min_skip_choices %}
+          <option value="{{ v }}" {% if (cfg.minimum_skip_length | int) == v %}selected{% endif %}>{{ v }}</option>
+          {% endfor %}
+        </select>
       </label>
       <label>
         Join name (shown on TV when this app connects)

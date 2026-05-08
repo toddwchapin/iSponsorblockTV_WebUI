@@ -5,10 +5,14 @@
            {% if d.screen_id %}readonly{% endif %} required
            title="{% if d.screen_id %}Screen IDs are set by pairing — use the Pair Device page to add or replace a device.{% else %}Paste a Screen ID, or use the Pair Device page.{% endif %}" />
   </td>
-  <td data-label="Offset (ms)" class="device-offset">
-    <input type="number" name="device_offset" value="{{ d.offset | default(0, true) }}" />
-  </td>
-  <td>
-    <button type="button" class="secondary" onclick="this.closest('tr').remove()">Remove</button>
+  <td data-label="Offset (ms)" class="device-offset-row">
+    <div class="offset-controls">
+      <select name="device_offset">
+        {% for v in offset_choices %}
+        <option value="{{ v }}" {% if (d.offset | default(0, true) | int) == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="secondary" onclick="this.closest('tr').remove()">Remove</button>
+    </div>
   </td>
 </tr>

@@ -95,7 +95,8 @@ def test_index_renders_with_no_existing_config(app_with_tmp_config) -> None:
     r = client.get("/")
     assert r.status_code == 200
     assert "Configuration" in r.text
-    assert "Skip categories" in r.text
+    assert "Skip Categories" in r.text  # round 4 item 7: container label
+    assert "Other settings" in r.text  # round 4 item 2: renamed from "Ads"
 
 
 def test_save_persists_config(app_with_tmp_config) -> None:
@@ -216,14 +217,103 @@ def test_existing_device_screen_id_readonly(app_with_tmp_config) -> None:
 
 
 def test_config_page_uses_two_column_grid(app_with_tmp_config) -> None:
-    """Issue #15 round 2 #4-5: SponsorBlock left, Ads/Playback stacked right."""
+    """Round 2 had three articles (SponsorBlock left, Ads top + Playback bottom).
+    Round 4 collapsed Ads + Playback into a single 'Other settings' article, so
+    the grid is now a simple two-column layout."""
     app, _ = app_with_tmp_config
     client = TestClient(app)
     r = client.get("/")
     assert 'class="config-grid"' in r.text
     assert 'class="grid-left"' in r.text
-    assert 'class="grid-right-top"' in r.text
-    assert 'class="grid-right-bottom"' in r.text
+    assert 'class="grid-right"' in r.text
+
+
+def test_round4_form_structure(app_with_tmp_config) -> None:
+    """Round 4 items 2/3/6/7/8/9: Skip Categories left (2-col grid), Other
+    settings right with checkboxes + min-skip dropdown + join name in order;
+    devices caption removed; old SponsorBlock/Ads/Playback labels gone."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/")
+    body = r.text
+
+    # 7: container labels.
+    assert ">Skip Categories<" in body
+    assert ">Other settings<" in body
+    # Old labels are gone.
+    assert ">SponsorBlock<" not in body
+    assert ">Ads<" not in body
+    assert ">Playback<" not in body
+
+    # 6: explanatory caption under "Devices" removed.
+    assert "Add or remove paired YouTube TV devices" not in body
+
+    # 8: skip categories 2-col grid wrapper.
+    assert 'class="skip-grid"' in body
+
+    # 3+9: Other settings ordering — Autoplay before Report, Report before
+    # Min skip, Min skip before Join name.
+    i_autoplay = body.index('name="auto_play"')
+    i_report = body.index('name="skip_count_tracking"')
+    i_min = body.index('name="minimum_skip_length"')
+    i_join = body.index('name="join_name"')
+    assert i_autoplay < i_report < i_min < i_join
+
+
+def test_round4_offset_dropdown(app_with_tmp_config) -> None:
+    """Round 4 item 5: device_offset is now a <select>; Remove button sits
+    inside the same cell, after the select."""
+    app, tmp = app_with_tmp_config
+    (tmp / "config.json").write_text(
+        json.dumps({"devices": [{"screen_id": "scr-x", "name": "TV", "offset": 250}]})
+    )
+    client = TestClient(app)
+    r = client.get("/")
+    body = r.text
+    assert '<select name="device_offset">' in body
+    # Selected option for offset=250 from disk.
+    assert 'value="250" selected' in body
+    # Boundary options present.
+    assert 'value="-2000"' in body and 'value="2000"' in body
+    # Offset cell wraps select + Remove together.
+    assert 'class="offset-controls"' in body
+    # Remove button still works (no name attr; type=button).
+    assert "this.closest('tr').remove()" in body
+
+
+def test_round4_min_skip_dropdown(app_with_tmp_config) -> None:
+    """Round 4 item 9: minimum_skip_length is now a <select>."""
+    app, tmp = app_with_tmp_config
+    (tmp / "config.json").write_text(json.dumps({"minimum_skip_length": 10}))
+    client = TestClient(app)
+    r = client.get("/")
+    body = r.text
+    assert '<select name="minimum_skip_length">' in body
+    assert 'value="10" selected' in body
+
+
+def test_round4_offset_select_round_trips_through_save(app_with_tmp_config) -> None:
+    """Round 4 item 5: posting the select value persists correctly."""
+    app, tmp = app_with_tmp_config
+    (tmp / "config.json").write_text(
+        json.dumps({"devices": [{"screen_id": "scr-y", "name": "Old TV", "offset": 0}]})
+    )
+    client = TestClient(app)
+    r = client.post(
+        "/save",
+        data={
+            "device_name": "TV1",
+            "device_screen_id": "scr-y",
+            "device_offset": "750",
+            "minimum_skip_length": "5",
+            "join_name": "iSponsorBlockTV",
+        },
+    )
+    assert r.status_code == 200
+    on_disk = json.loads((tmp / "config.json").read_text())
+    # config_io.sanitize() coerces both fields to int.
+    assert on_disk["devices"][0]["offset"] == 750
+    assert on_disk["minimum_skip_length"] == 5
 
 
 def test_channels_page_warns_when_no_apikey(app_with_tmp_config) -> None:
