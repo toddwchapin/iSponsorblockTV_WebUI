@@ -1,7 +1,8 @@
-"""Runtime settings: data dir resolution, restart behavior, host/port."""
+"""Runtime settings: data dir resolution, restart behavior, host/port, auth."""
 from __future__ import annotations
 
 import os
+import secrets
 from pathlib import Path
 
 from appdirs import user_data_dir
@@ -31,5 +32,31 @@ def service_name() -> str:
     return os.environ.get("WEBUI_SERVICE_NAME", "iSponsorBlockTV")
 
 
-HOST = os.environ.get("WEBUI_HOST", "0.0.0.0")
+def password() -> str:
+    """Single shared password for the WebUI. Empty string → auth disabled."""
+    return os.environ.get("WEBUI_PASSWORD", "")
+
+
+def session_ttl_seconds() -> int:
+    """Session cookie max-age. Default 7 days."""
+    try:
+        return int(os.environ.get("WEBUI_SESSION_TTL", str(7 * 24 * 3600)))
+    except ValueError:
+        return 7 * 24 * 3600
+
+
+def session_secret() -> str:
+    """Signing key for session cookies.
+
+    Falls back to a process-lifetime random key — sessions survive restarts only
+    when WEBUI_SESSION_SECRET is set, which is the right tradeoff for a
+    single-admin tool: no on-disk secret to leak, log out everyone on restart.
+    """
+    return os.environ.get("WEBUI_SESSION_SECRET") or secrets.token_urlsafe(48)
+
+
+# Default bind: 127.0.0.1. LAN deployments must opt in via WEBUI_HOST=0.0.0.0
+# (and ideally pair with WEBUI_PASSWORD or a reverse proxy). See README
+# Security notes for the threat model.
+HOST = os.environ.get("WEBUI_HOST", "127.0.0.1")
 PORT = int(os.environ.get("WEBUI_PORT", "8099"))

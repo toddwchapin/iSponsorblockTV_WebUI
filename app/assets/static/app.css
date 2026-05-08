@@ -426,6 +426,20 @@ input[readonly] {
    9.5rem fits "Resume refresh" without wrapping. */
 #logs-form button { min-width: 9.5rem; }
 
+/* ----- auth (issue #5) ----- */
+.login-card {
+  max-width: 22rem;
+  margin: var(--space-6) auto;
+}
+.login-card form { margin: 0; }
+.login-card button { width: 100%; margin-top: var(--space-3); }
+.logout-form { margin: 0; }
+.logout-form button {
+  margin: 0;
+  padding: .25rem .65rem;
+  font-size: var(--fs-xs);
+}
+
 /* ----- reduced motion ----- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

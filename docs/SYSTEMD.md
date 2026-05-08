@@ -90,6 +90,55 @@ install with `sudo pipx install ~/iSponsorblockTV_WebUI` (or run `pipx
 install` while logged in as root) and use
 `/root/.local/bin/isponsorblocktv-webui` for `ExecStart`.
 
+## Set the password (`WEBUI_PASSWORD`)
+
+The WebUI is single-admin and sits on the network — set a password before
+exposing the port. If `WEBUI_PASSWORD` is unset the service starts with
+`WARNING: WEBUI_PASSWORD not set — UI is open …` in the journal and
+serves unauthenticated (kept for backwards-compat with v1 installs).
+
+Pick **one** of the recipes below.
+
+### EnvironmentFile (recommended)
+
+Keeps the password out of the unit and lets you `chmod 600` it:
+
+```bash
+sudo install -d -m 700 -o root -g root /etc/iSponsorBlockTV
+sudo install -m 600 -o root -g root /dev/null /etc/iSponsorBlockTV/webui.env
+echo 'WEBUI_PASSWORD=hunter2' | sudo tee /etc/iSponsorBlockTV/webui.env >/dev/null
+```
+
+Then add a single line to `/etc/systemd/system/isponsorblocktv-webui.service`
+under `[Service]`:
+
+```ini
+EnvironmentFile=/etc/iSponsorBlockTV/webui.env
+```
+
+`sudo systemctl daemon-reload && sudo systemctl restart isponsorblocktv-webui`,
+then check `journalctl -u isponsorblocktv-webui -n 5` — the warning should
+be gone.
+
+### Inline `Environment=` (simpler, but the password is world-readable in the unit)
+
+```ini
+[Service]
+Environment=WEBUI_PASSWORD=hunter2
+```
+
+Only do this if `/etc/systemd/system/` is already chmod 700 on your host.
+
+### Rotation
+
+Edit the env file (or unit), `daemon-reload`, restart. Existing browser
+sessions stay valid until the cookie expiry (default 7 days, or
+`WEBUI_SESSION_TTL` seconds).
+
+### Forgot the password
+
+There is no reset flow. Edit the env file, restart, log in.
+
 ## Sudoers
 
 If iSponsorBlockTV runs as a *system* unit (not a Docker container, not a
