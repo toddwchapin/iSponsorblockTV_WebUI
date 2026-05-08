@@ -83,10 +83,46 @@ logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
    ls -l ~/.local/bin/isponsorblocktv-webui
    ```
 
-2. Edit `systemd/isponsorblocktv-webui.service` and replace **both**
-   occurrences of `REPLACE_ME` with that username (e.g. `dietpi`, `pi`, or
-   `root`). For `root`, change the `ExecStart` path to
-   `/root/.local/bin/isponsorblocktv-webui`.
+2. Edit `systemd/isponsorblocktv-webui.service`. Two lines reference the
+   account that owns the pipx install — both must be updated:
+
+   ```ini
+   User=REPLACE_ME
+   ExecStart=/home/REPLACE_ME/.local/bin/isponsorblocktv-webui
+   ```
+
+   Replace `REPLACE_ME` with that username. The substitution differs
+   slightly between regular accounts and `root` because `root`'s home is
+   `/root`, not `/home/root`:
+
+   | Account | `User=` | `ExecStart=` |
+   |---|---|---|
+   | `pi` | `User=pi` | `ExecStart=/home/pi/.local/bin/isponsorblocktv-webui` |
+   | `dietpi` | `User=dietpi` | `ExecStart=/home/dietpi/.local/bin/isponsorblocktv-webui` |
+   | `root` | `User=root` | `ExecStart=/root/.local/bin/isponsorblocktv-webui` |
+
+   One-shot edits — pick the line that matches your account:
+
+   ```bash
+   # Regular user (replace 'pi' with your account if different)
+   sed -i 's|REPLACE_ME|pi|g' systemd/isponsorblocktv-webui.service
+
+   # Root (note the second sed: /home/root → /root)
+   sed -i -e 's|REPLACE_ME|root|g' \
+          -e 's|/home/root/|/root/|' systemd/isponsorblocktv-webui.service
+   ```
+
+   Verify the file before installing it:
+
+   ```bash
+   grep -E '^(User|ExecStart)=' systemd/isponsorblocktv-webui.service
+   # Expected (pi):
+   #   User=pi
+   #   ExecStart=/home/pi/.local/bin/isponsorblocktv-webui
+   # Expected (root):
+   #   User=root
+   #   ExecStart=/root/.local/bin/isponsorblocktv-webui
+   ```
 
 3. Install the unit:
 
