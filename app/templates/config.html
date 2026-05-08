@@ -21,17 +21,14 @@
   <article>
     <header><strong>Devices</strong></header>
     <table id="devices-table">
-      <thead><tr><th>Name</th><th>Screen ID</th><th>Offset (ms)</th></tr></thead>
+      <thead><tr><th>Name</th><th>Offset (ms)</th></tr></thead>
       <tbody id="devices-body">
         {% for d in cfg.devices %}
           {% include "partials/device_row.html" %}
         {% endfor %}
       </tbody>
     </table>
-    <button type="button"
-            hx-get="/devices/blank-row"
-            hx-target="#devices-body"
-            hx-swap="beforeend">+ Add device</button>
+    <a href="/pair" role="button" class="secondary outline">+ Pair a new device</a>
   </article>
 
   <div class="config-grid">

@@ -213,9 +213,7 @@ article > header strong {
 
 input[type="number"], input.tabular,
 .logs-pre, .logs-pre code,
-#devices-table .device-offset input,
-#devices-table .device-offset select,
-#devices-table .device-screen-id input {
+#devices-table .device-offset select {
   font-variant-numeric: tabular-nums;
 }
 
@@ -329,9 +327,7 @@ input[readonly] {
 /* ----- desktop: device-row column widths + config grid ----- */
 @media (min-width: 641px) {
   #devices-table { table-layout: fixed; }
-  #devices-table .device-screen-id { width: 26rem; }
-  #devices-table .device-screen-id input { width: 100%; }
-  /* Offset cell now also holds the Remove button — see .offset-controls. */
+  /* Offset cell holds the dropdown + Remove button — see .offset-controls. */
   #devices-table .device-offset-row { width: 18rem; }
 
   .config-grid {

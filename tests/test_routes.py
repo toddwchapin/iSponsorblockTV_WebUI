@@ -190,19 +190,19 @@ def test_index_reads_existing_config(app_with_tmp_config) -> None:
     assert "key is currently saved" in r2.text
 
 
-def test_blank_device_row(app_with_tmp_config) -> None:
+def test_blank_device_row_route_removed(app_with_tmp_config) -> None:
+    """The /devices/blank-row endpoint is gone — manual screen-id paste was
+    replaced by a link to /pair on the config page."""
     app, _ = app_with_tmp_config
     client = TestClient(app)
     r = client.get("/devices/blank-row")
-    assert r.status_code == 200
-    assert 'name="device_screen_id"' in r.text
-    # Issue #15 round 2: blank rows stay editable so the "+ Add device"
-    # power-user path keeps working.
-    assert "readonly" not in r.text
+    assert r.status_code == 404
 
 
-def test_existing_device_screen_id_readonly(app_with_tmp_config) -> None:
-    """Issue #15 round 2 #1: screen IDs for existing devices are not editable."""
+def test_screen_id_hidden_in_form(app_with_tmp_config) -> None:
+    """Screen ID is opaque and meaningless to humans. It is never rendered
+    visibly on the config page — only in a hidden input so POST /save can
+    round-trip it."""
     app, tmp = app_with_tmp_config
     (tmp / "config.json").write_text(
         json.dumps({"devices": [{"screen_id": "scr-x", "name": "TV", "offset": 0}]})
@@ -210,10 +210,17 @@ def test_existing_device_screen_id_readonly(app_with_tmp_config) -> None:
     client = TestClient(app)
     r = client.get("/")
     assert r.status_code == 200
-    assert "scr-x" in r.text
-    # The screen-id input for an existing device carries the readonly attr.
-    assert 'name="device_screen_id" value="scr-x"' in r.text
-    assert "readonly" in r.text
+    body = r.text
+    # Hidden input present so save round-trips.
+    assert '<input type="hidden" name="device_screen_id" value="scr-x"' in body
+    # No visible Screen ID column header or cell.
+    assert "<th>Screen ID</th>" not in body
+    assert 'class="device-screen-id"' not in body
+    # No readonly attr anywhere on the form (hidden inputs don't take it).
+    assert "readonly" not in body
+    # "+ Pair a new device" link replaces the old "+ Add device" button.
+    assert 'href="/pair"' in body
+    assert "+ Pair a new device" in body
 
 
 def test_config_page_uses_two_column_grid(app_with_tmp_config) -> None:
