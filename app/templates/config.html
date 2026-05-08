@@ -7,9 +7,7 @@
 <form id="config-form"
       hx-post="/save"
       hx-target="#toast"
-      hx-swap="outerHTML"
-      hx-disabled-elt="#save-btn"
-      hx-indicator="#save-indicator">
+      hx-swap="outerHTML">
 
   <article>
     <header><strong>Devices</strong></header>
@@ -28,51 +26,53 @@
             hx-swap="beforeend">+ Add device</button>
   </article>
 
-  <article>
-    <header><strong>SponsorBlock</strong></header>
-    <fieldset>
-      <legend>Skip categories</legend>
-      {% for cat in all_skip_categories %}
+  <div class="config-grid">
+    <article class="grid-left">
+      <header><strong>SponsorBlock</strong></header>
+      <fieldset>
+        <legend>Skip categories</legend>
+        {% for cat in all_skip_categories %}
+        <label>
+          <input type="checkbox" name="skip_categories" value="{{ cat }}"
+                 {% if cat in cfg.skip_categories %}checked{% endif %} />
+          {{ cat }}
+        </label>
+        {% endfor %}
+      </fieldset>
       <label>
-        <input type="checkbox" name="skip_categories" value="{{ cat }}"
-               {% if cat in cfg.skip_categories %}checked{% endif %} />
-        {{ cat }}
+        Minimum skip length (seconds)
+        <input type="number" name="minimum_skip_length" min="0" value="{{ cfg.minimum_skip_length }}" />
       </label>
-      {% endfor %}
-    </fieldset>
-    <label>
-      Minimum skip length (seconds)
-      <input type="number" name="minimum_skip_length" min="0" value="{{ cfg.minimum_skip_length }}" />
-    </label>
-    <label>
-      <input type="checkbox" name="skip_count_tracking" {% if cfg.skip_count_tracking %}checked{% endif %} />
-      Report skipped segments to SponsorBlock (anonymized UUID)
-    </label>
-  </article>
+      <label>
+        <input type="checkbox" name="skip_count_tracking" {% if cfg.skip_count_tracking %}checked{% endif %} />
+        Report skipped segments to SponsorBlock (anonymized UUID)
+      </label>
+    </article>
 
-  <article>
-    <header><strong>Ads</strong></header>
-    <label>
-      <input type="checkbox" name="mute_ads" {% if cfg.mute_ads %}checked{% endif %} />
-      Mute YouTube native ads
-    </label>
-    <label>
-      <input type="checkbox" name="skip_ads" {% if cfg.skip_ads %}checked{% endif %} />
-      Skip YouTube native ads
-    </label>
-  </article>
+    <article class="grid-right-top">
+      <header><strong>Ads</strong></header>
+      <label>
+        <input type="checkbox" name="mute_ads" {% if cfg.mute_ads %}checked{% endif %} />
+        Mute YouTube native ads
+      </label>
+      <label>
+        <input type="checkbox" name="skip_ads" {% if cfg.skip_ads %}checked{% endif %} />
+        Skip YouTube native ads
+      </label>
+    </article>
 
-  <article>
-    <header><strong>Playback</strong></header>
-    <label>
-      <input type="checkbox" name="auto_play" {% if cfg.auto_play %}checked{% endif %} />
-      Autoplay
-    </label>
-    <label>
-      Join name (shown on TV when this app connects)
-      <input type="text" name="join_name" value="{{ cfg.join_name }}" />
-    </label>
-  </article>
+    <article class="grid-right-bottom">
+      <header><strong>Playback</strong></header>
+      <label>
+        <input type="checkbox" name="auto_play" {% if cfg.auto_play %}checked{% endif %} />
+        Autoplay
+      </label>
+      <label>
+        Join name (shown on TV when this app connects)
+        <input type="text" name="join_name" value="{{ cfg.join_name }}" />
+      </label>
+    </article>
+  </div>
 
   <article>
     <header><strong>YouTube Data API</strong></header>
@@ -90,16 +90,33 @@
 
   <div class="row-actions">
     <button id="save-btn" type="submit">Save and restart service</button>
-    <span id="save-indicator" class="htmx-indicator" aria-live="polite">
-      <span aria-busy="true">Saving and restarting&hellip;</span>
-    </span>
   </div>
 </form>
 
 <script>
 (function () {
+  const SAVE_LABEL = 'Save and restart service';
+  const SAVING_LABEL = 'Saving and restarting…';
+  const POLL_DEADLINE_MS = 10000;
+  const MIN_VISIBLE_MS = 1500;
+  const POLL_INTERVAL_MS = 1000;
+
   const form = document.getElementById('config-form');
   const btn = document.getElementById('save-btn');
+  let busyStart = 0;
+  let pollAbort = false;
+
+  function setBusy(state) {
+    if (state) {
+      btn.setAttribute('aria-busy', 'true');
+      btn.disabled = true;
+      btn.textContent = SAVING_LABEL;
+    } else {
+      btn.removeAttribute('aria-busy');
+      btn.disabled = false;
+      btn.textContent = SAVE_LABEL;
+    }
+  }
 
   function renderToast(cls, msg) {
     const el = document.getElementById('toast');
@@ -108,27 +125,82 @@
     el.textContent = msg;
   }
 
-  // Only fires when the request never reached the server (network error,
-  // WebUI itself dropped). HTTP 4xx/5xx with a body go through the normal
-  // afterRequest path and the existing toast partial.
-  form.addEventListener('htmx:sendError', function () {
-    renderToast('ok', 'Restart in progress, status unknown — checking…');
-    btn.setAttribute('aria-busy', 'true');
-    btn.disabled = true;
+  function finishBusy() {
+    pollAbort = true;
+    const elapsed = Date.now() - busyStart;
+    const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
+    setTimeout(() => setBusy(false), wait);
+  }
 
-    const start = Date.now();
-    const deadlineMs = 10000;
+  form.addEventListener('htmx:beforeRequest', function () {
+    busyStart = Date.now();
+    pollAbort = false;
+    setBusy(true);
+  });
+
+  form.addEventListener('htmx:afterRequest', function (evt) {
+    const xhr = evt.detail && evt.detail.xhr;
+    if (!xhr || xhr.status < 200 || xhr.status >= 300) {
+      // Non-2xx response: toast partial already rendered; just reset.
+      finishBusy();
+      return;
+    }
+    pollStatusUntilSettled();
+  });
+
+  // Network-level failure (WebUI dropped, DNS, etc.). HTTP errors go
+  // through afterRequest with the toast partial.
+  form.addEventListener('htmx:sendError', function () {
+    pollHealthzUntilBack();
+  });
+
+  function pollStatusUntilSettled() {
+    const start = busyStart;
     function tick() {
+      if (pollAbort) return;
+      fetch('/status', { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .then(s => {
+          const elapsed = Date.now() - start;
+          if (s && s.running === true) {
+            finishBusy();
+            return;
+          }
+          if (s && s.method === 'none') {
+            // No way to confirm — trust the toast and reset.
+            finishBusy();
+            return;
+          }
+          if (elapsed >= POLL_DEADLINE_MS) {
+            renderToast('err',
+              'Service status unknown after 10s — open the Logs page to investigate.');
+            finishBusy();
+            return;
+          }
+          setTimeout(tick, POLL_INTERVAL_MS);
+        })
+        .catch(() => {
+          if (Date.now() - start >= POLL_DEADLINE_MS) {
+            finishBusy();
+            return;
+          }
+          setTimeout(tick, POLL_INTERVAL_MS);
+        });
+    }
+    tick();
+  }
+
+  function pollHealthzUntilBack() {
+    renderToast('ok', 'Restart in progress, status unknown — checking…');
+    const start = busyStart || Date.now();
+    function tick() {
+      if (pollAbort) return;
       fetch('/healthz', { cache: 'no-store' })
-        .then(function (r) {
+        .then(r => {
           if (r && r.ok) {
-            renderToast(
-              'ok',
-              'WebUI is back. Verify iSponsorBlockTV with: ' +
-              'systemctl status iSponsorBlockTV'
-            );
-            btn.removeAttribute('aria-busy');
-            btn.disabled = false;
+            renderToast('ok',
+              'WebUI is back. Verify iSponsorBlockTV with: systemctl status iSponsorBlockTV');
+            finishBusy();
             return;
           }
           schedule();
@@ -136,20 +208,16 @@
         .catch(schedule);
     }
     function schedule() {
-      if (Date.now() - start >= deadlineMs) {
-        renderToast(
-          'err',
-          'Status unknown after 10s. Check the service manually: ' +
-          'systemctl status iSponsorBlockTV'
-        );
-        btn.removeAttribute('aria-busy');
-        btn.disabled = false;
+      if (Date.now() - start >= POLL_DEADLINE_MS) {
+        renderToast('err',
+          'Status unknown after 10s. Check: systemctl status iSponsorBlockTV');
+        finishBusy();
         return;
       }
-      setTimeout(tick, 1000);
+      setTimeout(tick, POLL_INTERVAL_MS);
     }
     tick();
-  });
+  }
 })();
 </script>
 {% endblock %}
