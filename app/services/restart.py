@@ -37,14 +37,18 @@ def restart() -> RestartResult:
     name = settings.service_name()
 
     if _docker_container_running(name):
+        log.info("restart: docker container %s detected", name)
         return _run(["docker", "restart", name], "docker")
 
     if _systemd_user_unit_active(name):
+        log.info("restart: systemd user unit %s active", name)
         return _run(["systemctl", "--user", "restart", name], "systemd-user")
 
     if _can_sudo_systemctl():
+        log.info("restart: passwordless sudo available, using systemctl restart %s", name)
         return _run(["sudo", "-n", "systemctl", "restart", name], "systemd-system")
 
+    log.warning("restart: no detection method succeeded for %s", name)
     return RestartResult(
         ok=False,
         method="none",

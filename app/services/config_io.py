@@ -6,11 +6,14 @@ Direct JSON I/O against the documented schema, deliberately avoiding upstream's
 from __future__ import annotations
 
 import json
+import logging
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 from app import settings
+
+log = logging.getLogger(__name__)
 
 DEFAULTS: dict[str, Any] = {
     "devices": [],
@@ -65,6 +68,7 @@ def save(cfg: dict[str, Any], path: Path | None = None) -> Path:
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(cleaned, f, indent=4)
     tmp.replace(path)
+    log.info("config saved to %s (%d bytes)", path, path.stat().st_size)
     return path
 
 
