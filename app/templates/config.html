@@ -21,7 +21,7 @@
   <article>
     <header><strong>Devices</strong></header>
     <table id="devices-table">
-      <thead><tr><th>Name</th><th>Offset (ms)</th></tr></thead>
+      <thead><tr><th>Name</th><th>Offset</th></tr></thead>
       <tbody id="devices-body">
         {% for d in cfg.devices %}
           {% include "partials/device_row.html" %}
@@ -35,7 +35,7 @@
     <article class="grid-left">
       <header><strong>Skip Categories</strong></header>
       <div class="skip-grid">
-        {% for cat in all_skip_categories %}
+        {% for cat in all_skip_categories | sort %}
         <label>
           <input type="checkbox" name="skip_categories" value="{{ cat }}"
                  {% if cat in cfg.skip_categories %}checked{% endif %} />
@@ -46,7 +46,7 @@
     </article>
 
     <article class="grid-right">
-      <header><strong>Other settings</strong></header>
+      <header><strong>Settings</strong></header>
       <label>
         <input type="checkbox" name="mute_ads" {% if cfg.mute_ads %}checked{% endif %} />
         Mute YouTube native ads
@@ -61,13 +61,13 @@
       </label>
       <label>
         <input type="checkbox" name="skip_count_tracking" {% if cfg.skip_count_tracking %}checked{% endif %} />
-        Report skipped segments to SponsorBlock (anonymized UUID)
+        Send anonymous data to SponsorBlock
       </label>
       <label>
-        Minimum skip length (seconds)
+        Minimum skip length
         <select name="minimum_skip_length">
           {% for v in min_skip_choices %}
-          <option value="{{ v }}" {% if (cfg.minimum_skip_length | int) == v %}selected{% endif %}>{{ v }}</option>
+          <option value="{{ v }}" {% if (cfg.minimum_skip_length | int) == v %}selected{% endif %}>{{ v }} seconds</option>
           {% endfor %}
         </select>
       </label>

@@ -96,7 +96,7 @@ def test_index_renders_with_no_existing_config(app_with_tmp_config) -> None:
     assert r.status_code == 200
     assert "Configuration" in r.text
     assert "Skip Categories" in r.text  # round 4 item 7: container label
-    assert "Other settings" in r.text  # round 4 item 2: renamed from "Ads"
+    assert "Settings" in r.text  # round 4 item 2: renamed from "Ads"
 
 
 def test_save_persists_config(app_with_tmp_config) -> None:
@@ -244,13 +244,14 @@ def test_round4_form_structure(app_with_tmp_config) -> None:
     r = client.get("/")
     body = r.text
 
-    # 7: container labels.
+    # 7: container labels (round 5 renamed "Other settings" -> "Settings").
     assert ">Skip Categories<" in body
-    assert ">Other settings<" in body
+    assert ">Settings<" in body
     # Old labels are gone.
     assert ">SponsorBlock<" not in body
     assert ">Ads<" not in body
     assert ">Playback<" not in body
+    assert ">Other settings<" not in body
 
     # 6: explanatory caption under "Devices" removed.
     assert "Add or remove paired YouTube TV devices" not in body
@@ -321,6 +322,105 @@ def test_round4_offset_select_round_trips_through_save(app_with_tmp_config) -> N
     # config_io.sanitize() coerces both fields to int.
     assert on_disk["devices"][0]["offset"] == 750
     assert on_disk["minimum_skip_length"] == 5
+
+
+def test_round5_skip_categories_sorted(app_with_tmp_config) -> None:
+    """Round 5 item C1: skip categories render alphabetically.
+
+    Canonical order in config_io.ALL_SKIP_CATEGORIES has 'sponsor' first
+    and 'selfpromo' second; alphabetical pushes 'exclusive_access' before
+    both. The rendered value="..." attributes on each checkbox preserve
+    the iteration order, so we can find them in the body and confirm.
+    """
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/")
+    body = r.text
+    i_excl = body.index('value="exclusive_access"')
+    i_filler = body.index('value="filler"')
+    i_intro = body.index('value="intro"')
+    i_sponsor = body.index('value="sponsor"')
+    # Alphabetical: exclusive_access < filler < intro < sponsor.
+    assert i_excl < i_filler < i_intro < i_sponsor
+
+
+def test_round5_dropdown_unit_suffixes(app_with_tmp_config) -> None:
+    """Round 5 items C5/C6: option text includes the unit; label drops it."""
+    app, tmp = app_with_tmp_config
+    # Seed a device so the offset dropdown renders.
+    (tmp / "config.json").write_text(
+        json.dumps({"devices": [{"screen_id": "scr-x", "name": "TV", "offset": 0}]})
+    )
+    client = TestClient(app)
+    r = client.get("/")
+    body = r.text
+    # Min skip: every option text ends with " seconds".
+    assert ">0 seconds<" in body
+    assert ">10 seconds<" in body
+    assert ">60 seconds<" in body
+    # Label dropped the "(seconds)".
+    assert "Minimum skip length (seconds)" not in body
+    # Offset: option text ends with " ms" (signed too).
+    assert ">0 ms<" in body
+    assert ">250 ms<" in body
+    assert ">-2000 ms<" in body
+    assert ">2000 ms<" in body
+    # Table header dropped "(ms)".
+    assert "<th>Offset</th>" in body
+    assert "<th>Offset (ms)</th>" not in body
+
+
+def test_round5_skip_count_label(app_with_tmp_config) -> None:
+    """Round 5 item C4: "Send anonymous data to SponsorBlock" replaces the
+    longer round-4 copy."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/")
+    body = r.text
+    assert "Send anonymous data to SponsorBlock" in body
+    assert "Report skipped segments" not in body
+
+
+def test_round5_logs_default_n_is_ten(app_with_tmp_config) -> None:
+    """Round 5 item L4: /logs default is 10 lines."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/logs")
+    assert r.status_code == 200
+    # Number input renders the n value; default of 10 should appear.
+    assert 'id="logs-n"' in r.text
+    assert 'value="10"' in r.text
+
+
+def test_round5_logs_has_pause_copy_and_links(app_with_tmp_config) -> None:
+    """Round 5 items L1/L2/L3/L5: pause-refresh button, copy button, and
+    project links present on /logs."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/logs")
+    body = r.text
+    # Buttons.
+    assert 'id="logs-pause-btn"' in body
+    assert "Pause refresh" in body
+    assert 'id="logs-copy-btn"' in body
+    # Project links open in new tab.
+    assert 'href="https://github.com/toddwchapin/iSponsorblockTV_WebUI"' in body
+    assert 'href="https://github.com/dmunozv04/iSponsorBlockTV"' in body
+    assert body.count('target="_blank"') >= 2
+
+
+def test_round5_channels_apikey_link(app_with_tmp_config) -> None:
+    """Round 5 channels item: 'YouTube Data API key' phrase in the page
+    caption is wrapped in an anchor to the docs, target=_blank."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/channels")
+    body = r.text
+    assert (
+        '<a href="https://developers.google.com/youtube/v3/getting-started"'
+        in body
+    )
+    assert "YouTube Data API key</a>" in body
 
 
 def test_channels_page_warns_when_no_apikey(app_with_tmp_config) -> None:

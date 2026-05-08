@@ -29,7 +29,7 @@ from app import settings
 log = logging.getLogger(__name__)
 
 DOCKER_SOCK = "/var/run/docker.sock"
-DEFAULT_TAIL_LINES = 200
+DEFAULT_TAIL_LINES = 10
 MAX_TAIL_LINES = 5000
 
 
