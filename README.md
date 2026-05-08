@@ -132,6 +132,52 @@ Stop the service, remove the package, then the repo. Your iSponsorBlockTV
 `config.json` is left untouched. Full steps in
 [docs/SYSTEMD.md → Uninstall](docs/SYSTEMD.md#uninstall).
 
+## Dependencies
+
+### Upstream service this UI configures
+
+- [iSponsorBlockTV](https://github.com/dmunozv04/iSponsorBlockTV) — the
+  daemon that does the actual SponsorBlock skipping on YouTube TV.
+
+### Runtime (Python)
+
+Pinned in [`pyproject.toml`](pyproject.toml).
+
+- [FastAPI](https://fastapi.tiangolo.com/) ([repo](https://github.com/fastapi/fastapi))
+  — web framework + routing.
+- [Uvicorn](https://www.uvicorn.org/) ([repo](https://github.com/encode/uvicorn))
+  — ASGI server (`[standard]` extra for httptools + uvloop).
+- [Jinja2](https://jinja.palletsprojects.com/) ([repo](https://github.com/pallets/jinja))
+  — HTML templates.
+- [python-multipart](https://github.com/Kludex/python-multipart) — form
+  parsing for `POST /save`, `POST /channels/apikey`, `POST /pair/code`.
+- [httpx](https://www.python-httpx.org/) ([repo](https://github.com/encode/httpx))
+  — async HTTP client used by the YouTube pairing + Data API calls.
+- [appdirs](https://github.com/ActiveState/appdirs) — locates the
+  default `~/.config/iSponsorBlockTV/` data directory.
+
+### Frontend (vendored or self-hosted)
+
+- [Pico CSS](https://picocss.com/) ([repo](https://github.com/picocss/pico))
+  — base style layer (loaded from jsDelivr in
+  [`base.html`](app/templates/base.html)).
+- [htmx](https://htmx.org/) ([repo](https://github.com/bigskysoftware/htmx))
+  — partial swaps for status badge, toast, channel rows, log tail
+  (loaded from unpkg).
+- [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque)
+  ([repo](https://github.com/ateliertriay/bricolage)) — variable display
+  font, self-hosted at `/static/bricolage-grotesque-var.woff2` (latin
+  subset, ~77 KB).
+
+### Development
+
+- [pytest](https://docs.pytest.org/) ([repo](https://github.com/pytest-dev/pytest))
+  — test runner.
+- [pytest-asyncio](https://github.com/pytest-dev/pytest-asyncio) — async
+  test support.
+- [ruff](https://docs.astral.sh/ruff/) ([repo](https://github.com/astral-sh/ruff))
+  — linter + formatter.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md). Tracking design and progress in
