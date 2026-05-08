@@ -1,275 +1,117 @@
 # iSponsorBlockTV WebUI
 
 A small browser-based configuration UI for
-[iSponsorBlockTV](https://github.com/dmunozv04/iSponsorBlockTV) so you can
-edit `config.json`, pair a YouTube TV device, and manage the channel
-whitelist without SSHing into the Raspberry Pi.
+[iSponsorBlockTV](https://github.com/dmunozv04/iSponsorBlockTV) — edit
+`config.json`, pair YouTube TV devices, and manage the channel whitelist
+without SSHing into the Pi.
 
-Tracking design and progress in [issue #1](../../issues/1).
+[![healthz](https://img.shields.io/badge/healthz-/healthz-blue)](#run)
+LAN-only. Single-admin. No auth.
 
-## Features (v1)
+## Pages
 
-- Edit every field of `config.json` (devices, skip categories, ads, API key,
-  proxy, etc.) and save.
-- Pair YouTube TV devices with a 12-digit code from the TV's
-  *Settings → Link with TV code*.
-- Search and add channels to the whitelist using the YouTube Data API.
-- Detects how iSponsorBlockTV is running (Docker container, systemd user
-  unit, or system unit via passwordless `sudo`) and restarts it after a
-  config save.
+| Path | Purpose |
+|------|---------|
+| `/` | Edit `config.json`: skip categories, ad muting, devices, join name |
+| `/pair` | Pair a TV via 12-digit code (auto-hyphenates as you type) |
+| `/channels` | Manage the channel whitelist; save the YouTube Data API key + proxy toggle |
+| `/logs` | Live tail of the iSponsorBlockTV service log (auto-refreshes every 5s) |
+| `/healthz` | JSON liveness/version probe |
+| `/status` | JSON service status (method, running, detail) |
+| `/status/badge` | HTML fragment used by the header status badge |
 
-Out of scope for v1: LAN auto-discovery during pairing, log viewer,
-authentication. Use `iSponsorBlockTV --setup` on the Pi if you need LAN scan.
+## Features
 
-## Install on a Raspberry Pi
+- Sticky header + tab bar; fixed-bottom **Save and restart** button that
+  enables only when the form is dirty. When the service is detected as
+  stopped, the same button switches to **Start service**.
+- Live status badge in the header — Running / Stopped / Unknown — with a
+  hidden `aria-live` region announcing transitions.
+- Toast notifications for save / restart / API-key actions, with
+  `role="status"` and `aria-live="polite"`.
+- Light and dark themes follow the OS preference (Pico CSS tokens).
+- Self-hosted [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque)
+  variable font (latin subset, ~77 KB woff2) — no third-party CDN.
+- Service detection: Docker container → `systemctl --user` → `sudo
+  systemctl` (passwordless, scoped sudoers rule).
 
-Use `pipx` so the command is on PATH globally and isolated from system Python.
+## Quick start
+
+`pipx` keeps the command on PATH and isolated from system Python.
 
 ```bash
 sudo apt install -y pipx git
-pipx ensurepath        # adds ~/.local/bin to PATH; open a new shell after
+pipx ensurepath
 git clone https://github.com/toddwchapin/iSponsorblockTV_WebUI.git ~/iSponsorblockTV_WebUI
 pipx install ~/iSponsorblockTV_WebUI
 ```
 
-Open a new shell (or `source ~/.bashrc`) so `~/.local/bin` is on PATH, then
-confirm the install and run it:
+Open a new shell so `~/.local/bin` is on PATH, then:
 
 ```bash
-isponsorblocktv-webui --version    # prints e.g. "isponsorblocktv-webui 0.2.0"
+isponsorblocktv-webui --version    # e.g. "isponsorblocktv-webui 0.2.0"
 isponsorblocktv-webui              # serves on http://0.0.0.0:8099
 ```
 
-The UI reads and writes the same `config.json` iSponsorBlockTV uses (default
-`~/.config/iSponsorBlockTV/config.json`). Override with `WEBUI_DATA_DIR=/path`.
+The UI reads and writes the same `config.json` iSponsorBlockTV uses
+(default `~/.config/iSponsorBlockTV/config.json`).
 
-While running, `GET /healthz` returns `{"status":"ok","version":"..."}` —
-useful for monitoring or for confirming which version is actually live.
+To run it as a system service so it survives reboots, see
+[**docs/SYSTEMD.md**](docs/SYSTEMD.md).
 
-## Update to the latest version
+## Update
 
-`git pull` only updates the source tree on disk. It does **not** touch the
-pipx venv that holds the running binary, so the new code never reaches
-the service. After every pull you must reinstall:
+`git pull` does not update the pipx venv. Always reinstall after a pull:
 
 ```bash
 cd ~/iSponsorblockTV_WebUI
 git pull
 pipx install --force ~/iSponsorblockTV_WebUI
-# If you have the systemd unit installed:
-sudo systemctl restart isponsorblocktv-webui
+sudo systemctl restart isponsorblocktv-webui   # if installed as a service
 ```
 
-Verify the version that's actually running:
+Verify:
 
 ```bash
 isponsorblocktv-webui --version
-# or, with the service running:
 curl -s http://localhost:8099/healthz
 ```
 
-If the version still looks old after `pipx install --force`, double-check
-that you ran the command as the same user that did the original
-`pipx install` (the venv lives under that user's home directory).
+## Configuration
 
-## Run as a systemd service
-
-The shipped unit is a **system** service — it works whether or not anyone is
-logged in, and it works on DietPi-as-root (where user-scope systemd doesn't).
-
-1. Confirm the pipx shim exists for the account that ran `pipx install`:
-
-   ```bash
-   ls -l ~/.local/bin/isponsorblocktv-webui
-   ```
-
-2. Edit the unit file inside the cloned repo. Its full path is:
-
-   ```
-   ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
-   ```
-
-   (If you cloned to a different location, substitute that path
-   throughout this section. For a `root` install where you cloned to
-   `/root/iSponsorblockTV_WebUI`, the path is
-   `/root/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service`.)
-
-   Two lines reference the account that owns the pipx install — both
-   must be updated:
-
-   ```ini
-   User=REPLACE_ME
-   ExecStart=/home/REPLACE_ME/.local/bin/isponsorblocktv-webui
-   ```
-
-   Replace `REPLACE_ME` with that username. The substitution differs
-   slightly between regular accounts and `root` because `root`'s home is
-   `/root`, not `/home/root`:
-
-   | Account | `User=` | `ExecStart=` |
-   |---|---|---|
-   | `pi` | `User=pi` | `ExecStart=/home/pi/.local/bin/isponsorblocktv-webui` |
-   | `dietpi` | `User=dietpi` | `ExecStart=/home/dietpi/.local/bin/isponsorblocktv-webui` |
-   | `root` | `User=root` | `ExecStart=/root/.local/bin/isponsorblocktv-webui` |
-
-   One-shot edits — pick the line that matches your account. These use
-   the full path so you can run them from anywhere:
-
-   ```bash
-   # Regular user (replace 'pi' with your account if different)
-   sed -i 's|REPLACE_ME|pi|g' \
-       ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
-
-   # Root (note the second sed rewrites /home/root → /root)
-   sudo sed -i -e 's|REPLACE_ME|root|g' \
-               -e 's|/home/root/|/root/|' \
-               /root/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
-   ```
-
-   Verify the file before installing it:
-
-   ```bash
-   grep -E '^(User|ExecStart)=' \
-       ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service
-   # Expected (pi):
-   #   User=pi
-   #   ExecStart=/home/pi/.local/bin/isponsorblocktv-webui
-   # Expected (root, run as root or with sudo, against /root/...):
-   #   User=root
-   #   ExecStart=/root/.local/bin/isponsorblocktv-webui
-   ```
-
-3. Install the unit:
-
-   ```bash
-   sudo cp ~/iSponsorblockTV_WebUI/systemd/isponsorblocktv-webui.service \
-           /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now isponsorblocktv-webui
-   ```
-
-   For a `root` install, replace `~/iSponsorblockTV_WebUI` with
-   `/root/iSponsorblockTV_WebUI` in the `cp` source path above.
-
-4. Verify:
-
-   ```bash
-   systemctl status isponsorblocktv-webui
-   journalctl -u isponsorblocktv-webui -n 50
-   curl -s http://localhost:8099/healthz   # {"status":"ok","version":"..."}
-   ```
-
-### DietPi note
-
-DietPi often runs as `root`. That works fine with this **system** unit:
-install with `sudo pipx install ~/iSponsorblockTV_WebUI` (or run `pipx
-install` while logged in as root) and use
-`/root/.local/bin/isponsorblocktv-webui` for `ExecStart`.
-
-## Uninstall
-
-Run as the same user that did the `pipx install`. The order matters: stop
-the service first, then remove the package, then the repo. Your
-iSponsorBlockTV `config.json` is left untouched.
-
-1. Stop and disable the service (skip if you never installed the unit):
-
-   ```bash
-   sudo systemctl disable --now isponsorblocktv-webui
-   sudo rm /etc/systemd/system/isponsorblocktv-webui.service
-   sudo systemctl daemon-reload
-   ```
-
-2. Remove the package and its venv:
-
-   ```bash
-   pipx uninstall isponsorblocktv-webui
-   ```
-
-   For a root install, run that with `sudo`.
-
-3. Remove the cloned repo:
-
-   ```bash
-   rm -rf ~/iSponsorblockTV_WebUI
-   ```
-
-4. (Optional) Remove the sudoers rule, if you added one for the restart
-   feature:
-
-   ```bash
-   sudo rm /etc/sudoers.d/isponsorblocktv-webui
-   ```
-
-5. (Optional) Delete the iSponsorBlockTV config itself. **This deletes the
-   paired devices and your YouTube API key — only do this if you're also
-   removing iSponsorBlockTV.**
-
-   ```bash
-   rm -rf ~/.config/iSponsorBlockTV
-   ```
-
-## Restarting the service after a config save
-
-The WebUI tries the following, in order:
-
-1. **Docker:** `docker restart iSponsorBlockTV` if `/var/run/docker.sock`
-   exists and a container with that name is running.
-2. **Systemd user unit:** `systemctl --user restart iSponsorBlockTV` if such
-   a unit is active.
-3. **System unit via sudo:** `sudo -n systemctl restart iSponsorBlockTV`.
-   Requires a NOPASSWD sudoers entry. Example, scoped to one command only:
-
-   ```
-   # /etc/sudoers.d/isponsorblocktv-webui
-   pi ALL=(root) NOPASSWD: /bin/systemctl restart iSponsorBlockTV
-   ```
-
-If none of the above succeed, the UI shows a toast asking you to restart
-manually.
-
-Override the unit/container name with `WEBUI_SERVICE_NAME=...`.
-
-## Service status badge and log tail (`/logs`)
-
-The header shows a green/amber/grey status badge polled every 5s from
-`GET /status`. The `Logs` page (`/logs`) tails the service log using the
-same detection chain: `docker logs --tail`, then
-`journalctl --user -u iSponsorBlockTV -n N`, then
-`sudo -n journalctl -u iSponsorBlockTV -n N`.
-
-If you use the system-unit path, extend the existing NOPASSWD rule so the
-WebUI can also read logs without a password. Scope it tightly:
-
-```
-# /etc/sudoers.d/isponsorblocktv-webui
-pi ALL=(root) NOPASSWD: /bin/systemctl restart iSponsorBlockTV
-pi ALL=(root) NOPASSWD: /bin/journalctl -u iSponsorBlockTV *
-```
-
-Without that second line, `/logs` falls back to a friendly "no log source
-available" notice instead of 500'ing.
-
-## Environment variables
+Environment variables:
 
 | Variable | Default | Purpose |
-|---|---|---|
+|----------|---------|---------|
 | `WEBUI_HOST` | `0.0.0.0` | Bind address |
 | `WEBUI_PORT` | `8099` | Bind port |
 | `WEBUI_DATA_DIR` | `~/.config/iSponsorBlockTV` | Where `config.json` lives |
 | `WEBUI_SERVICE_NAME` | `iSponsorBlockTV` | Docker container / systemd unit name |
 | `WEBUI_NO_RESTART` | unset | Set `1` to disable the restart subprocess (dev/tests) |
 
+## Service detection & restart
+
+The same chain drives the status badge, log tail, and the save+restart action:
+
+1. **Docker** — `docker restart $WEBUI_SERVICE_NAME` if `/var/run/docker.sock`
+   exists and a container with that name is present.
+2. **Systemd user unit** — `systemctl --user restart $WEBUI_SERVICE_NAME`
+   if the user unit is known to systemd.
+3. **Systemd system unit (sudo)** — `sudo -n systemctl restart
+   $WEBUI_SERVICE_NAME`. Requires a NOPASSWD sudoers entry. Logs require a
+   second NOPASSWD line for `journalctl`. See
+   [**docs/SYSTEMD.md**](docs/SYSTEMD.md#sudoers) for the exact rules.
+
+If none succeed, the UI shows a toast asking you to restart manually.
+
 ## Security notes
 
-- This is a single-admin, LAN-only tool. No authentication, no CSRF token.
-  Bind to `127.0.0.1` and put it behind a reverse proxy if your network
-  is not trusted.
-- The YouTube API key is masked in the form but stored in plaintext in
-  `config.json` (this is what upstream does too).
-- If you use the sudoers route, scope the rules to *only* the
-  `systemctl restart iSponsorBlockTV` and
-  `journalctl -u iSponsorBlockTV *` commands — never give blanket sudo.
+- Single-admin, LAN-only. No authentication, no CSRF token. Bind to
+  `127.0.0.1` and front with a reverse proxy on untrusted networks.
+- The YouTube Data API key is masked in the form but stored in plaintext
+  in `config.json` (matches upstream).
+- Scope sudoers rules tightly to `systemctl restart iSponsorBlockTV` and
+  `journalctl -u iSponsorBlockTV *` — never blanket sudo.
 
 ## Development
 
@@ -278,3 +120,23 @@ pip install -e '.[dev]'
 WEBUI_NO_RESTART=1 pytest
 WEBUI_NO_RESTART=1 WEBUI_DATA_DIR=/tmp/webui-dev uvicorn app.main:app --reload
 ```
+
+For architecture details (service detection internals, template + partial
+layout, design-token system, `/static` mount, accessibility) see
+[**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md). For dev workflow
+guidance and how to add a page see [**CONTRIBUTING.md**](CONTRIBUTING.md).
+
+## Uninstall
+
+Stop the service, remove the package, then the repo. Your iSponsorBlockTV
+`config.json` is left untouched. Full steps in
+[docs/SYSTEMD.md → Uninstall](docs/SYSTEMD.md#uninstall).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Tracking design and progress in
+[issue #1](../../issues/1).
+
+## License
+
+MIT.
