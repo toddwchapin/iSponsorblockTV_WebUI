@@ -1,15 +1,15 @@
 <span id="status-badge"
-      class="status-badge {{ 'ok' if st.running else ('warn' if st.method != 'none' else 'unknown') }}"
+      class="status-badge {{ 'ok' if st.running else ('err' if st.method != 'none' else 'unknown') }}"
       title="{{ st.detail }}"
       hx-get="/status/badge"
       hx-trigger="every 5s"
       hx-swap="outerHTML">
   <span class="status-dot" aria-hidden="true"></span>
   {%- if st.running -%}
-    iSponsorBlockTV: running
+    Running
   {%- elif st.method == 'none' -%}
-    iSponsorBlockTV: status unknown
+    Unknown
   {%- else -%}
-    iSponsorBlockTV: stopped
+    Stopped
   {%- endif -%}
 </span>

@@ -12,7 +12,9 @@ router = APIRouter()
 
 @router.get("", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return request.app.state.templates.TemplateResponse(request, "pair.html", {})
+    return request.app.state.templates.TemplateResponse(
+        request, "pair.html", {"active": "pair"}
+    )
 
 
 @router.post("/code", response_class=HTMLResponse)

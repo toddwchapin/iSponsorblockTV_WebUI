@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from app import settings
-from app.services import config_io, restart as restart_service
+from app.services import config_io, restart as restart_service, service_status
 
 router = APIRouter()
 
@@ -22,6 +22,8 @@ async def index(request: Request) -> HTMLResponse:
             "cfg": cfg,
             "config_path": str(settings.config_path()),
             "all_skip_categories": config_io.ALL_SKIP_CATEGORIES,
+            "st": service_status.status(),
+            "active": "config",
         },
     )
 
