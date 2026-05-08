@@ -165,6 +165,35 @@ def test_blank_device_row(app_with_tmp_config) -> None:
     r = client.get("/devices/blank-row")
     assert r.status_code == 200
     assert 'name="device_screen_id"' in r.text
+    # Issue #15 round 2: blank rows stay editable so the "+ Add device"
+    # power-user path keeps working.
+    assert "readonly" not in r.text
+
+
+def test_existing_device_screen_id_readonly(app_with_tmp_config) -> None:
+    """Issue #15 round 2 #1: screen IDs for existing devices are not editable."""
+    app, tmp = app_with_tmp_config
+    (tmp / "config.json").write_text(
+        json.dumps({"devices": [{"screen_id": "scr-x", "name": "TV", "offset": 0}]})
+    )
+    client = TestClient(app)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "scr-x" in r.text
+    # The screen-id input for an existing device carries the readonly attr.
+    assert 'name="device_screen_id" value="scr-x"' in r.text
+    assert "readonly" in r.text
+
+
+def test_config_page_uses_two_column_grid(app_with_tmp_config) -> None:
+    """Issue #15 round 2 #4-5: SponsorBlock left, Ads/Playback stacked right."""
+    app, _ = app_with_tmp_config
+    client = TestClient(app)
+    r = client.get("/")
+    assert 'class="config-grid"' in r.text
+    assert 'class="grid-left"' in r.text
+    assert 'class="grid-right-top"' in r.text
+    assert 'class="grid-right-bottom"' in r.text
 
 
 def test_channels_page_warns_when_no_apikey(app_with_tmp_config) -> None:

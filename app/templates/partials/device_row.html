@@ -1,7 +1,13 @@
 <tr>
   <td data-label="Name"><input type="text" name="device_name" value="{{ d.name | default('YouTube on TV', true) }}" /></td>
-  <td data-label="Screen ID"><input type="text" name="device_screen_id" value="{{ d.screen_id }}" required /></td>
-  <td data-label="Offset (ms)"><input type="number" name="device_offset" value="{{ d.offset | default(0, true) }}" /></td>
+  <td data-label="Screen ID" class="device-screen-id">
+    <input type="text" name="device_screen_id" value="{{ d.screen_id }}"
+           {% if d.screen_id %}readonly{% endif %} required
+           title="{% if d.screen_id %}Screen IDs are set by pairing — use the Pair Device page to add or replace a device.{% else %}Paste a Screen ID, or use the Pair Device page.{% endif %}" />
+  </td>
+  <td data-label="Offset (ms)" class="device-offset">
+    <input type="number" name="device_offset" value="{{ d.offset | default(0, true) }}" />
+  </td>
   <td>
     <button type="button" class="secondary" onclick="this.closest('tr').remove()">Remove</button>
   </td>
