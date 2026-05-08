@@ -24,7 +24,10 @@ async def index(request: Request) -> HTMLResponse:
         {
             "cfg": cfg,
             "config_path": str(settings.config_path()),
-            "all_skip_categories": config_io.ALL_SKIP_CATEGORIES,
+            "skip_category_choices": sorted(
+                config_io.SKIP_CATEGORY_LABELS.items(),
+                key=lambda kv: kv[1],
+            ),
             "offset_choices": OFFSET_CHOICES,
             "min_skip_choices": MIN_SKIP_CHOICES,
             "st": service_status.status(),

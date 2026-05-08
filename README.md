@@ -3,7 +3,10 @@
 A small browser-based configuration UI for
 [iSponsorBlockTV](https://github.com/dmunozv04/iSponsorBlockTV) — edit
 `config.json`, pair YouTube TV devices, and manage the channel whitelist
-without SSHing into the Pi.
+without SSHing into the Pi. Skip data is sourced from the
+[SponsorBlock API](https://sponsor.ajay.app); see the
+[Category Explanations](https://github.com/toddwchapin/iSponsorblockTV_WebUI/wiki/Category-Explanations)
+wiki page for what each skip category covers.
 
 [![healthz](https://img.shields.io/badge/healthz-/healthz-blue)](#run)
 LAN-only. Single-admin. No auth.
