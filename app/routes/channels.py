@@ -19,6 +19,7 @@ async def index(request: Request) -> HTMLResponse:
         {
             "whitelist": cfg.get("channel_whitelist", []),
             "has_api_key": bool(cfg.get("apikey")),
+            "active": "channels",
         },
     )
 

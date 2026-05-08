@@ -27,7 +27,14 @@ async def status_badge(request: Request) -> HTMLResponse:
 async def logs_page(request: Request, n: int = service_status.DEFAULT_TAIL_LINES) -> HTMLResponse:
     result = service_status.tail_logs(n)
     return request.app.state.templates.TemplateResponse(
-        request, "logs.html", {"result": result, "n": n, "default_n": service_status.DEFAULT_TAIL_LINES}
+        request,
+        "logs.html",
+        {
+            "result": result,
+            "n": n,
+            "default_n": service_status.DEFAULT_TAIL_LINES,
+            "active": "logs",
+        },
     )
 
 

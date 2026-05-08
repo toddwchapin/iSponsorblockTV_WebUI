@@ -8,8 +8,56 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <style>
-    main.container { max-width: 1080px; padding-top: 1rem; }
+    /* Mobile viewport hardening: keep page strictly inside the viewport
+       so long device rows / wide containers don't push horizontal scroll
+       (issue #15 round 3 items 7 + 8). */
+    html, body { max-width: 100vw; overflow-x: hidden; }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    main.container { max-width: 1080px; padding-top: 1rem; padding-bottom: 5rem; }
     nav ul { list-style: none; }
+
+    /* Sticky header + tab bar (issue #15 round 3 items 1-2). */
+    .app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--pico-background-color, #11191f);
+      border-bottom: 1px solid var(--pico-muted-border-color, #444);
+      padding: .5rem 1rem;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .header-row {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: .5rem; flex-wrap: wrap;
+    }
+    .tab-bar {
+      display: flex; gap: .25rem; margin-top: .5rem;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--pico-muted-border-color, #444);
+    }
+    .tab-bar .tab {
+      padding: .4rem .8rem;
+      border-radius: .25rem .25rem 0 0;
+      text-decoration: none;
+      color: var(--pico-color);
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-bar .tab:hover { background: var(--pico-card-background-color); }
+    .tab-bar .tab.active {
+      border-bottom-color: var(--pico-primary, #0172ad);
+      font-weight: 600;
+    }
+
+    /* Fixed-bottom action bar (issue #15 round 3 item 3). */
+    .action-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: var(--pico-background-color, #11191f);
+      border-top: 1px solid var(--pico-muted-border-color, #444);
+      padding: .75rem 1rem;
+      display: flex; justify-content: flex-end;
+    }
+    .action-bar button { margin: 0; }
     .toast { padding: .5rem .75rem; border-radius: .25rem; margin: .5rem 0; }
     .toast.ok { background: #14532d; color: #d1fae5; }
     .toast.err { background: #7f1d1d; color: #fee2e2; }
@@ -79,6 +127,7 @@
       background: #6b7280; }
     .status-badge.ok    .status-dot { background: #22c55e; }
     .status-badge.warn  .status-dot { background: #f59e0b; }
+    .status-badge.err   .status-dot { background: #ef4444; }
     .status-badge.unknown .status-dot { background: #6b7280; }
     .logs-pre { max-height: 60vh; overflow: auto; padding: .75rem;
       font-size: .8rem; background: var(--pico-card-background-color);
@@ -88,32 +137,29 @@
   </style>
 </head>
 <body>
-  <header class="container">
-    <nav>
-      <ul>
-        <li><strong>iSponsorBlockTV WebUI</strong></li>
-        <li>
-          <span id="status-badge"
-                class="status-badge unknown"
-                hx-get="/status/badge"
-                hx-trigger="load, every 5s"
-                hx-swap="outerHTML">
-            <span class="status-dot" aria-hidden="true"></span>
-            checking…
-          </span>
-        </li>
-      </ul>
-      <ul>
-        <li><a href="/">Config</a></li>
-        <li><a href="/pair">Pair Device</a></li>
-        <li><a href="/channels">Channels</a></li>
-        <li><a href="/logs">Logs</a></li>
-      </ul>
+  <header class="app-header">
+    <div class="header-row">
+      <strong>iSponsorBlockTV WebUI</strong>
+      <span id="status-badge"
+            class="status-badge unknown"
+            hx-get="/status/badge"
+            hx-trigger="load, every 5s"
+            hx-swap="outerHTML">
+        <span class="status-dot" aria-hidden="true"></span>
+        checking…
+      </span>
+    </div>
+    <nav class="tab-bar" aria-label="Sections">
+      <a href="/"         class="tab {% if active == 'config'   %}active{% endif %}">Config</a>
+      <a href="/pair"     class="tab {% if active == 'pair'     %}active{% endif %}">Pair Device</a>
+      <a href="/channels" class="tab {% if active == 'channels' %}active{% endif %}">Channels</a>
+      <a href="/logs"     class="tab {% if active == 'logs'     %}active{% endif %}">Logs</a>
     </nav>
   </header>
   <main class="container">
     <div id="toast"></div>
     {% block content %}{% endblock %}
   </main>
+  {% block footer %}{% endblock %}
 </body>
 </html>

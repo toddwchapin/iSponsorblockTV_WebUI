@@ -88,15 +88,14 @@
     </label>
   </article>
 
-  <div class="row-actions">
-    <button id="save-btn" type="submit">Save and restart service</button>
-  </div>
 </form>
 
 <script>
 (function () {
-  const SAVE_LABEL = 'Save and restart service';
+  const RESTART_LABEL = 'Save and restart service';
+  const START_LABEL = 'Start service';
   const SAVING_LABEL = 'Saving and restarting…';
+  const STARTING_LABEL = 'Starting…';
   const POLL_DEADLINE_MS = 10000;
   const MIN_VISIBLE_MS = 1500;
   const POLL_INTERVAL_MS = 1000;
@@ -106,17 +105,45 @@
   let busyStart = 0;
   let pollAbort = false;
 
+  function idleLabel() {
+    return btn.dataset.mode === 'start' ? START_LABEL : RESTART_LABEL;
+  }
+  function busyLabel() {
+    return btn.dataset.mode === 'start' ? STARTING_LABEL : SAVING_LABEL;
+  }
+
   function setBusy(state) {
     if (state) {
       btn.setAttribute('aria-busy', 'true');
       btn.disabled = true;
-      btn.textContent = SAVING_LABEL;
+      btn.textContent = busyLabel();
     } else {
       btn.removeAttribute('aria-busy');
-      btn.disabled = false;
-      btn.textContent = SAVE_LABEL;
+      // Successful save settles the form: service should now be running, so
+      // switch to restart mode. Re-disable + re-arm the dirty gate unless
+      // we're in the no-detection legacy fallback (always-enabled).
+      btn.dataset.mode = 'restart';
+      btn.textContent = idleLabel();
+      if (btn.dataset.noDirtyGate === '1') {
+        btn.disabled = false;
+      } else {
+        btn.disabled = true;
+        armDirtyTracker();
+      }
     }
   }
+
+  function enableForDirty() {
+    btn.disabled = false;
+  }
+  function armDirtyTracker() {
+    // Skip when no dirty gate applies: start-service mode (always enabled)
+    // or detection-method=none fallback (always enabled so user isn't locked out).
+    if (btn.dataset.noDirtyGate === '1') return;
+    form.addEventListener('input', enableForDirty, { once: true });
+    form.addEventListener('change', enableForDirty, { once: true });
+  }
+  armDirtyTracker();
 
   function renderToast(cls, msg) {
     const el = document.getElementById('toast');
@@ -220,4 +247,20 @@
   }
 })();
 </script>
+{% endblock %}
+
+{% block footer %}
+{% set f_running    = st.running %}
+{% set f_known      = st.method != 'none' %}
+{% set f_start_mode = f_known and not f_running %}
+<div class="action-bar">
+  <button id="save-btn"
+          type="submit"
+          form="config-form"
+          data-mode="{{ 'start' if f_start_mode else 'restart' }}"
+          {% if f_start_mode or not f_known %}data-no-dirty-gate="1"{% endif %}
+          {% if f_known and not f_start_mode %}disabled{% endif %}>
+    {% if f_start_mode %}Start service{% else %}Save and restart service{% endif %}
+  </button>
+</div>
 {% endblock %}
