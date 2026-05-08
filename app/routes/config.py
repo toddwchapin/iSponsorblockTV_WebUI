@@ -40,10 +40,8 @@ async def blank_device_row(request: Request) -> HTMLResponse:
 @router.post("/save", response_class=HTMLResponse)
 async def save(request: Request) -> HTMLResponse:
     form = await request.form()
-    new_cfg = _form_to_config(form)
-    # Preserve channel_whitelist (managed via /channels page, not this form)
     existing = config_io.load()
-    new_cfg["channel_whitelist"] = existing.get("channel_whitelist", [])
+    new_cfg = _form_to_config(form, existing)
     try:
         config_io.save(new_cfg)
     except OSError as e:
@@ -52,7 +50,7 @@ async def save(request: Request) -> HTMLResponse:
     return _toast(request, ok=result.ok, message=f"Saved. {result.message()}")
 
 
-def _form_to_config(form: Any) -> dict[str, Any]:
+def _form_to_config(form: Any, existing: dict[str, Any]) -> dict[str, Any]:
     names = form.getlist("device_name")
     screen_ids = form.getlist("device_screen_id")
     offsets = form.getlist("device_offset")
@@ -69,8 +67,11 @@ def _form_to_config(form: Any) -> dict[str, Any]:
         "skip_ads": form.get("skip_ads") == "on",
         "auto_play": form.get("auto_play") == "on",
         "join_name": form.get("join_name") or "iSponsorBlockTV",
-        "apikey": form.get("apikey") or "",
-        "use_proxy": form.get("use_proxy") == "on",
+        # Preserved from disk — managed via /channels (apikey, use_proxy)
+        # and the /channels page itself (channel_whitelist).
+        "apikey": existing.get("apikey", ""),
+        "use_proxy": existing.get("use_proxy", False),
+        "channel_whitelist": existing.get("channel_whitelist", []),
     }
 
 

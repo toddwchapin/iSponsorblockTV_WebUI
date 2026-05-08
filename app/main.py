@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Response
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import __version__, settings
@@ -19,12 +20,14 @@ from app.routes import status as status_route
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 ASSETS = BASE_DIR / "assets"
+STATIC_DIR = ASSETS / "static"
 FAVICON_SVG = ASSETS / "favicon.svg"
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="iSponsorBlockTV WebUI", version=__version__)
     app.state.templates = TEMPLATES
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
