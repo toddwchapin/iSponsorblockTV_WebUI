@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}iSponsorBlockTV WebUI{% endblock %}</title>
+  {% if auth_enabled() %}
+  <meta name="csrf-token" content="{{ csrf_for_request(request) }}" />
+  {% endif %}
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="preload" as="font" type="font/woff2"
         href="/static/bricolage-grotesque-var.woff2" crossorigin />
@@ -11,6 +14,16 @@
         href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   <link rel="stylesheet" href="/static/app.css" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  {% if auth_enabled() %}
+  <script>
+    // Inject CSRF token into every htmx request. Document-level so it
+    // survives outerHTML swaps that replace whole sections.
+    document.addEventListener('htmx:configRequest', (e) => {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta) e.detail.headers['X-CSRF-Token'] = meta.getAttribute('content');
+    });
+  </script>
+  {% endif %}
 </head>
 <body>
   <header class="app-header">
@@ -36,6 +49,11 @@
           <span class="status-dot" aria-hidden="true"></span>
           checking…
         </span>
+        {% if auth_enabled() %}
+        <form method="post" action="/logout" class="logout-form">
+          <button type="submit" class="secondary outline">Sign out</button>
+        </form>
+        {% endif %}
       </div>
       <nav class="tab-bar" aria-label="Sections">
         <a href="/"         class="tab {% if active == 'config'   %}active{% endif %}"

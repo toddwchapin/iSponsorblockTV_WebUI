@@ -7,6 +7,36 @@ breaking template / route changes are still possible.
 
 ## [Unreleased]
 
+### Security (#5)
+- **Session auth.** `WEBUI_PASSWORD` env var gates the entire UI behind a
+  signed-cookie session (HttpOnly, SameSite=Lax, default 7-day TTL via
+  `WEBUI_SESSION_TTL`). Login at `/login`, logout at `/logout`. Password
+  is hashed in memory with `hashlib.scrypt` at startup; nothing is
+  written to disk. If `WEBUI_PASSWORD` is unset the service still starts
+  with `WARNING: WEBUI_PASSWORD not set …` and serves unauthenticated
+  (v1 backwards-compat).
+- **CSRF on every write.** `POST /save`, `POST /pair/*`,
+  `POST /channels/*`, `DELETE /channels/{id}`, and `POST /login` itself.
+  Token is per-session, surfaced via `<meta name="csrf-token">`, and
+  injected into every htmx request by a global `htmx:configRequest`
+  listener — no per-form wiring needed.
+- **Bind default flipped to `127.0.0.1`.** LAN access is opt-in via
+  `WEBUI_HOST=0.0.0.0`. Caddy/nginx reverse-proxy recipe added to README.
+- **Uvicorn access log disabled** as a belt-and-suspenders against future
+  routes that might accept secrets in query strings.
+
+### Migration
+
+If you're upgrading from a 0.2.x install:
+
+1. Set `WEBUI_PASSWORD` in your shell, `EnvironmentFile`, or unit
+   `Environment=` line. See
+   [docs/SYSTEMD.md → Set the password](docs/SYSTEMD.md#set-the-password-webui_password).
+2. If you reach the WebUI from another host on the LAN, also set
+   `WEBUI_HOST=0.0.0.0` (the new default is `127.0.0.1`).
+3. Restart the service. The journal should no longer contain
+   `WARNING: WEBUI_PASSWORD not set …`.
+
 ### Docs
 - README rewritten and shortened (~280 → ~120 lines). Page table, accurate
   feature list, and a single section for service detection and restart

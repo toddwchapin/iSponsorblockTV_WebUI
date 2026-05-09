@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Sign in — iSponsorBlockTV WebUI{% endblock %}
+{% block content %}
+<article class="login-card">
+  <header><strong>Sign in</strong></header>
+  {% if error %}
+    <p class="toast err" role="alert">{{ error }}</p>
+  {% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="_csrf" value="{{ csrf }}" />
+    <input type="hidden" name="next" value="{{ next }}" />
+    <label>
+      Password
+      <input type="password" name="password" autocomplete="current-password"
+             autofocus required />
+    </label>
+    <button type="submit">Sign in</button>
+  </form>
+</article>
+{% endblock %}

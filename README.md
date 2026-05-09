@@ -9,7 +9,8 @@ without SSHing into the Pi. Skip data is sourced from the
 wiki page for what each skip category covers.
 
 [![healthz](https://img.shields.io/badge/healthz-/healthz-blue)](#run)
-LAN-only. Single-admin. No auth.
+Single-admin. Password-gated session auth (`WEBUI_PASSWORD`). Defaults to
+binding `127.0.0.1`.
 
 ## Pages
 
@@ -53,11 +54,17 @@ Open a new shell so `~/.local/bin` is on PATH, then:
 
 ```bash
 isponsorblocktv-webui --version    # e.g. "isponsorblocktv-webui 0.2.0"
-isponsorblocktv-webui              # serves on http://0.0.0.0:8099
+WEBUI_PASSWORD=hunter2 isponsorblocktv-webui   # serves on http://127.0.0.1:8099
 ```
 
 The UI reads and writes the same `config.json` iSponsorBlockTV uses
 (default `~/.config/iSponsorBlockTV/config.json`).
+
+> **`WEBUI_PASSWORD` is required for production.** If unset, the service
+> starts with a warning and serves unauthenticated (kept for v1
+> backwards-compat). For LAN access set `WEBUI_HOST=0.0.0.0` *and*
+> `WEBUI_PASSWORD`. For systemd-managed installs see
+> [docs/SYSTEMD.md → Set the password](docs/SYSTEMD.md#set-the-password-webui_password).
 
 To run it as a system service so it survives reboots, see
 [**docs/SYSTEMD.md**](docs/SYSTEMD.md).
@@ -73,6 +80,13 @@ pipx install --force ~/iSponsorblockTV_WebUI
 sudo systemctl restart isponsorblocktv-webui   # if installed as a service
 ```
 
+> **Upgrading from a pre-auth release?** Set `WEBUI_PASSWORD` *before*
+> restarting — otherwise the WebUI runs without auth and emits
+> `WARNING: WEBUI_PASSWORD not set` in the journal. The default bind also
+> changes from `0.0.0.0` to `127.0.0.1`; if you reach the UI from another
+> host on the LAN, set `WEBUI_HOST=0.0.0.0` (and a password) explicitly.
+> See [Security notes](#security-notes) for the threat model.
+
 Verify:
 
 ```bash
@@ -86,8 +100,11 @@ Environment variables:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `WEBUI_HOST` | `0.0.0.0` | Bind address |
+| `WEBUI_HOST` | `127.0.0.1` | Bind address. Set to `0.0.0.0` for LAN access (combine with `WEBUI_PASSWORD`). |
 | `WEBUI_PORT` | `8099` | Bind port |
+| `WEBUI_PASSWORD` | unset | Single shared password. Unset = open + startup warning. |
+| `WEBUI_SESSION_TTL` | `604800` | Session cookie max-age in seconds (default 7 days). |
+| `WEBUI_SESSION_SECRET` | random per-process | Signing key for the session cookie. Set to a stable random string to keep sessions valid across restarts. |
 | `WEBUI_DATA_DIR` | `~/.config/iSponsorBlockTV` | Where `config.json` lives |
 | `WEBUI_SERVICE_NAME` | `iSponsorBlockTV` | Docker container / systemd unit name |
 | `WEBUI_NO_RESTART` | unset | Set `1` to disable the restart subprocess (dev/tests) |
@@ -109,10 +126,76 @@ If none succeed, the UI shows a toast asking you to restart manually.
 
 ## Security notes
 
-- Single-admin, LAN-only. No authentication, no CSRF token. Bind to
-  `127.0.0.1` and front with a reverse proxy on untrusted networks.
+### Threat model
+
+The WebUI is a single-admin tool. It assumes one trusted operator and
+treats anyone else who can reach the port as hostile. The defaults aim
+for a typical home LAN (one admin, several family members on the same
+Wi-Fi, no segmentation): bind to `127.0.0.1`, require a password before
+serving anything stateful, CSRF-protect every write.
+
+What it does **not** defend against:
+
+- Multi-admin / multi-tenant use — there is one shared password and no
+  per-user auth.
+- A compromised host — anyone with shell access can read
+  `config.json`, the session secret, and the password env var.
+- Replay of a stolen session cookie within its TTL. Mitigation: set a
+  short `WEBUI_SESSION_TTL` (e.g. `3600`) on shared networks.
+
+### What's enforced
+
+- **Password gate.** `WEBUI_PASSWORD` (single shared secret). When unset
+  the service still starts but logs `WARNING: WEBUI_PASSWORD not set …`
+  and serves unauthenticated — preserved for v1 deployments that haven't
+  rotated yet, but **set the password as soon as you can.**
+- **Signed-cookie sessions** via Starlette's `SessionMiddleware`. Cookie
+  is `HttpOnly`, `SameSite=Lax`. Default TTL 7 days
+  (`WEBUI_SESSION_TTL`).
+- **CSRF on every write.** The login form, all `POST /save`,
+  `POST /pair/*`, `POST /channels/*`, and `DELETE /channels/{id}` require
+  an `X-CSRF-Token` header (htmx; injected automatically by a global
+  `htmx:configRequest` listener) or a hidden `_csrf` form field. Token
+  is per-session and stored only in the session cookie.
+- **Bind defaults to `127.0.0.1`.** LAN access is opt-in via
+  `WEBUI_HOST=0.0.0.0`. The reverse-proxy recipe below is the
+  recommended path for exposing the UI off-host.
+- **Logs don't leak secrets.** Uvicorn's access log is disabled (forms
+  POST the YouTube API key in the body anyway, but belt-and-suspenders).
+  The `apikey` field is masked in the rendered config form.
+- **Open routes.** `/healthz`, `/favicon.*`, `/static/*`, `/login`,
+  `/logout` only. Everything else (including `/logs`) requires auth.
+
+### Reverse proxy (Caddy) — exposing on the LAN
+
+If you want the UI reachable from another machine on the LAN, the
+recommended path is to keep `WEBUI_HOST=127.0.0.1` and front the service
+with a reverse proxy that adds TLS (and, optionally, a second auth
+layer):
+
+```caddyfile
+# /etc/caddy/Caddyfile
+isponsorblocktv.lan {
+    reverse_proxy 127.0.0.1:8099
+}
+```
+
+For nginx the equivalent is a `proxy_pass http://127.0.0.1:8099;` block
+inside a `server { listen 443 ssl; … }` virtual host.
+
+If you'd rather skip the proxy and bind directly:
+
+```bash
+WEBUI_HOST=0.0.0.0 WEBUI_PASSWORD=hunter2 isponsorblocktv-webui
+```
+
+You **must** set `WEBUI_PASSWORD` in this case — anything else is leaving
+the front door open.
+
+### Other notes
+
 - The YouTube Data API key is masked in the form but stored in plaintext
-  in `config.json` (matches upstream).
+  in `config.json` (matches upstream). Don't world-read your data dir.
 - Scope sudoers rules tightly to `systemctl restart iSponsorBlockTV` and
   `journalctl -u iSponsorBlockTV *` — never blanket sudo.
 
