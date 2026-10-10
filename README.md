@@ -1,16 +1,16 @@
 # iSponsorBlockTV WebUI
 
-A small browser-based configuration UI for
-[iSponsorBlockTV](https://github.com/dmunozv04/iSponsorBlockTV) — edit
-`config.json`, pair YouTube TV devices, and manage the channel whitelist
-without SSHing into the Pi. Skip data is sourced from the
+A browser-based configuration UI for
+[iSponsorBlockTV](https://github.com/dmunozv04/iSponsorBlockTV). Edit
+`config.json`, pair a TV using the code shown in YouTube, and manage the
+channel whitelist from your browser. The upstream daemon does the skipping;
+this project only manages its settings. Skip data comes from the
 [SponsorBlock API](https://sponsor.ajay.app); see the
 [Category Explanations](https://github.com/toddwchapin/iSponsorblockTV_WebUI/wiki/Category-Explanations)
 wiki page for what each skip category covers.
 
-[![healthz](https://img.shields.io/badge/healthz-/healthz-blue)](#run)
-Single-admin. Password-gated session auth (`WEBUI_PASSWORD`). Defaults to
-binding `127.0.0.1`.
+Single-admin. Set `WEBUI_PASSWORD` to enable session authentication; the UI
+binds to `127.0.0.1` by default.
 
 ## Pages
 
@@ -24,13 +24,11 @@ binding `127.0.0.1`.
 | `/status` | JSON service status (method, running, detail) |
 | `/status/badge` | HTML fragment used by the header status badge |
 
-> **Running in Docker?** `/pair`'s LAN auto-discovery (SSDP/DIAL) needs to
-> reach the LAN directly — it doesn't work from behind the default bridge
-> network's NAT (the M-SEARCH multicast either doesn't escape it, or a
-> replying TV's response doesn't route back correctly). Run the container
-> with `--network host` (or `network_mode: host` in Compose) if you want
-> LAN scanning to actually find devices; code-based pairing is unaffected
-> either way. Confirmed against a real Raspberry Pi deployment — see #3.
+> **Docker and LAN scanning:** SSDP/DIAL discovery needs host networking on
+> Linux (`--network host` or `network_mode: host` in Compose). The default
+> bridge network won't reliably pass the multicast request and response.
+> TV-code pairing works without host networking. On macOS, Docker host
+> networking doesn't provide the same LAN multicast behavior as native Linux.
 
 ## Features
 
@@ -39,11 +37,11 @@ binding `127.0.0.1`.
   stopped, the same button switches to **Start service**.
 - Live status badge in the header — Running / Stopped / Unknown — with a
   hidden `aria-live` region announcing transitions.
-- Toast notifications for save / restart / API-key actions, with
+- Toast notifications for save, restart, and API-key actions, with
   `role="status"` and `aria-live="polite"`.
 - Light and dark themes follow the OS preference (Pico CSS tokens).
 - Self-hosted [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque)
-  variable font (latin subset, ~77 KB woff2) — no third-party CDN.
+  variable font (latin subset, ~77 KB woff2). CSS and htmx still load from CDNs.
 - Service detection: Docker container → `systemctl --user` → `sudo
   systemctl` (passwordless, scoped sudoers rule).
 
@@ -61,16 +59,18 @@ pipx install ~/iSponsorblockTV_WebUI
 Open a new shell so `~/.local/bin` is on PATH, then:
 
 ```bash
-isponsorblocktv-webui --version    # e.g. "isponsorblocktv-webui 0.2.0"
-WEBUI_PASSWORD=hunter2 isponsorblocktv-webui   # serves on http://127.0.0.1:8099
+isponsorblocktv-webui --version    # e.g. "isponsorblocktv-webui 0.3.0"
+read -r -s -p 'WebUI password: ' WEBUI_PASSWORD; printf '\n'
+export WEBUI_PASSWORD
+isponsorblocktv-webui            # serves on http://127.0.0.1:8099
 ```
 
 The UI reads and writes the same `config.json` iSponsorBlockTV uses
 (default `~/.config/iSponsorBlockTV/config.json`).
 
-> **`WEBUI_PASSWORD` is required for production.** If unset, the service
-> starts with a warning and serves unauthenticated (kept for v1
-> backwards-compat). For LAN access set `WEBUI_HOST=0.0.0.0` *and*
+> **Set `WEBUI_PASSWORD` before starting the UI.** Without it, the service
+> warns and serves pages without authentication (for backwards compatibility).
+> For LAN access set `WEBUI_HOST=0.0.0.0` *and*
 > `WEBUI_PASSWORD`. For systemd-managed installs see
 > [docs/SYSTEMD.md → Set the password](docs/SYSTEMD.md#set-the-password-webui_password).
 
@@ -80,9 +80,10 @@ To run it as a system service so it survives reboots, see
 ## Container deployment
 
 Published releases use `ghcr.io/toddwchapin/isponsorblocktv-webui:0.3.0`
-(replace the tag when upgrading to a newer release).
-The WebUI must mount the **same data directory** as the iSponsorBlockTV daemon;
-otherwise saving settings changes the wrong `config.json`. Example on Linux:
+(use the new tag when upgrading). This image runs the WebUI, not the
+iSponsorBlockTV daemon. Run the daemon separately and mount its data directory
+into both containers. They must use the same `config.json`; otherwise your
+changes won't reach the daemon. Example on Linux:
 
 ```yaml
 services:
@@ -94,18 +95,22 @@ services:
       WEBUI_PASSWORD: ${WEBUI_PASSWORD:?Set WEBUI_PASSWORD in your environment}
       WEBUI_DATA_DIR: /data
     volumes:
-      - ./data:/data # same host directory mounted at /app/data in iSponsorBlockTV
+      - ./data:/data # use the daemon's actual host data directory here
     restart: unless-stopped
 ```
 
-Open port 8099 on the host. On a shared network, use a TLS reverse proxy;
-the built-in password does not encrypt traffic. If you need the WebUI to
-restart the daemon or show its Docker logs, it also needs access to the Docker
-socket. Mounting `/var/run/docker.sock` grants **host-level Docker control**
-(even with a read-only bind); only do this if you accept that risk. Without
-the socket, save the config in the UI and restart the daemon yourself.
-Docker host networking on macOS does not provide the same LAN multicast
-discovery behavior as a native Linux host; use TV-code pairing as fallback.
+Set `WEBUI_PASSWORD` in your shell or Compose environment before starting the
+stack; don't put the password in this file. The UI listens on port 8099. On a
+shared network, use a TLS reverse proxy; the built-in password does not
+encrypt traffic.
+
+To restart the daemon or show its Docker logs from the UI, the container also
+needs the Docker socket. Mounting `/var/run/docker.sock` grants host-level
+Docker control (even with a read-only bind); only do this if you accept that
+risk. Without the socket, save the config in the UI and restart the daemon
+yourself.
+
+On macOS, use TV-code pairing if LAN scanning doesn't find your TV.
 
 ## Update
 
@@ -166,11 +171,10 @@ If none succeed, the UI shows a toast asking you to restart manually.
 
 ### Threat model
 
-The WebUI is a single-admin tool. It assumes one trusted operator and
-treats anyone else who can reach the port as hostile. The defaults aim
-for a typical home LAN (one admin, several family members on the same
-Wi-Fi, no segmentation): bind to `127.0.0.1`, require a password before
-serving anything stateful, CSRF-protect every write.
+The WebUI is a single-admin tool. It assumes one trusted operator. By
+default it binds to `127.0.0.1` and CSRF-protects writes, but it does **not**
+enforce a password unless you set `WEBUI_PASSWORD`. Set one before exposing
+the UI to your LAN.
 
 What it does **not** defend against:
 
@@ -198,8 +202,8 @@ What it does **not** defend against:
 - **Bind defaults to `127.0.0.1`.** LAN access is opt-in via
   `WEBUI_HOST=0.0.0.0`. The reverse-proxy recipe below is the
   recommended path for exposing the UI off-host.
-- **Logs don't leak secrets.** Uvicorn's access log is disabled (forms
-  POST the YouTube API key in the body anyway, but belt-and-suspenders).
+- **Access logs are disabled.** Uvicorn does not log request URLs; forms
+  POST the YouTube API key in the body.
   The `apikey` field is masked in the rendered config form.
 - **Open routes.** `/healthz`, `/favicon.*`, `/static/*`, `/login`,
   `/logout` only. Everything else (including `/logs`) requires auth.
@@ -224,11 +228,10 @@ inside a `server { listen 443 ssl; … }` virtual host.
 If you'd rather skip the proxy and bind directly:
 
 ```bash
-WEBUI_HOST=0.0.0.0 WEBUI_PASSWORD=hunter2 isponsorblocktv-webui
+WEBUI_HOST=0.0.0.0 isponsorblocktv-webui  # after exporting WEBUI_PASSWORD above
 ```
 
-You **must** set `WEBUI_PASSWORD` in this case — anything else is leaving
-the front door open.
+Set `WEBUI_PASSWORD` first. Binding to the LAN without it leaves the UI open.
 
 ### Other notes
 
