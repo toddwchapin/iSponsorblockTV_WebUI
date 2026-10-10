@@ -20,12 +20,13 @@ app/
 ├── settings.py          # env-var reads (HOST, PORT, DATA_DIR, SERVICE_NAME)
 ├── routes/
 │   ├── config.py        # GET / (config form), POST /save
-│   ├── pair.py          # GET /pair, POST /pair/code
+│   ├── pair.py          # GET /pair, POST /pair/code, POST /pair/lan-scan, GET /pair/lan-scan/poll
 │   ├── channels.py      # GET /channels, POST /channels/apikey, /search, /add, DELETE
 │   └── status.py        # GET /status (JSON), /status/badge (HTML), /logs, /logs/tail
 ├── services/
 │   ├── config_io.py     # load/save config.json (atomic write)
 │   ├── pairing.py       # YouTube TV pairing protocol
+│   ├── lan_discovery.py # SSDP/DIAL LAN scan for pairing
 │   ├── channels.py      # YouTube Data API v3 channel search
 │   ├── service_status.py# detection + log tail
 │   └── restart.py       # docker / systemd restart
@@ -101,6 +102,7 @@ Partials in `templates/partials/`:
 | `channel_row.html` | `/channels` whitelist list |
 | `channel_search_results.html` | `/channels/search` HTMX response |
 | `paired_device.html` | `/pair/code` success response |
+| `lan_scan_results.html` | `/pair` page + `/pair/lan-scan`, `/pair/lan-scan/poll` |
 | `logs_tail.html` | `/logs` page + `/logs/tail` polled refresh |
 
 ## Static assets and `/static`
@@ -138,6 +140,31 @@ after restart, `pollHealthzUntilBack()` for service comebacks.
 YouTube TV pairing endpoint, then writes the new device into
 `config.json` via `config_io.save()`. The frontend auto-hyphenates the
 12-digit code as the user types; backend strips hyphens/spaces.
+
+### LAN auto-discovery (#3)
+
+`app/services/lan_discovery.py` reimplements the discovery half of
+upstream `iSponsorBlockTV.dial_client` rather than importing it — upstream
+ties `find_youtube_app`/`discover()` to an `ApiHelper` instance (for its
+`pair_with_code`), and the WebUI already avoids constructing one of those
+for the same reason `pairing.py` talks to the YouTube Lounge API directly.
+The algorithm itself (M-SEARCH via the `ssdp` package → per-device DIAL
+probe via `httpx` → launch-and-pair fallback for devices with no screen ID
+yet) is ported close to verbatim from upstream, since that shape is
+already proven.
+
+A scan spans several HTTP requests — `POST /pair/lan-scan` starts a
+background `asyncio` task and returns immediately; `GET
+/pair/lan-scan/poll` (HTMX-polled every 1.5s while running) reports
+progress — so results live in a module-level `ScanState` singleton rather
+than a single request's response, the same reasoning as
+`service_status.py`'s live-status pattern. `start_scan()` is idempotent:
+calling it while a scan is already running returns the in-flight state
+instead of starting a second M-SEARCH.
+
+Discovered devices render through the same "Add to config" mini-form as
+`paired_device.html` (`POST /pair/save`), so a scan never touches
+`config.json` on its own — the admin still confirms each device.
 
 ## Channel whitelist
 

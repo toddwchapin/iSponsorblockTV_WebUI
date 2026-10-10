@@ -7,6 +7,15 @@ breaking template / route changes are still possible.
 
 ## [Unreleased]
 
+### Added (#3)
+- **LAN auto-discovery for pairing.** `/pair` can now scan the local
+  network via SSDP/DIAL instead of requiring a 12-digit TV code: `Scan
+  LAN` sends an M-SEARCH, probes every DIAL device that responds, and
+  launches the YouTube app (pairing itself, via the same flow as a manual
+  code) on ones that don't already expose a screen ID. Discovered devices
+  are listed with an "Add to config" action each, same as the code-pairing
+  flow. New deps: `ssdp`, `xmltodict`.
+
 ### Security (#5)
 - **Session auth.** `WEBUI_PASSWORD` env var gates the entire UI behind a
   signed-cookie session (HttpOnly, SameSite=Lax, default 7-day TTL via

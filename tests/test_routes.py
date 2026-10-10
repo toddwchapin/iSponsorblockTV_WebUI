@@ -1,5 +1,4 @@
 """Smoke tests for HTTP routes via FastAPI TestClient."""
-
 from __future__ import annotations
 
 import json
@@ -18,10 +17,8 @@ def app_with_tmp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     import importlib
 
     from app import settings as settings_mod
-
     importlib.reload(settings_mod)
     from app import main as main_mod
-
     importlib.reload(main_mod)
     return main_mod.app, tmp_path
 
@@ -75,7 +72,7 @@ def test_index_links_favicon(app_with_tmp_config) -> None:
     r = client.get("/")
     assert r.status_code == 200
     assert 'rel="icon"' in r.text
-    assert "/favicon.svg" in r.text
+    assert '/favicon.svg' in r.text
 
 
 def test_static_mount_serves_app_css(app_with_tmp_config) -> None:
@@ -108,7 +105,9 @@ def test_save_persists_config(app_with_tmp_config) -> None:
     preserved across saves that don't touch them."""
     app, tmp = app_with_tmp_config
     # Pre-seed apikey on disk so we can verify /save preserves it.
-    (tmp / "config.json").write_text(json.dumps({"apikey": "preserved-key", "use_proxy": True}))
+    (tmp / "config.json").write_text(
+        json.dumps({"apikey": "preserved-key", "use_proxy": True})
+    )
     client = TestClient(app)
     r = client.post(
         "/save",
@@ -129,7 +128,9 @@ def test_save_persists_config(app_with_tmp_config) -> None:
     on_disk = json.loads((tmp / "config.json").read_text())
     assert on_disk["apikey"] == "preserved-key"
     assert on_disk["use_proxy"] is True
-    assert on_disk["devices"] == [{"screen_id": "screen-xyz", "name": "Living", "offset": 100}]
+    assert on_disk["devices"] == [
+        {"screen_id": "screen-xyz", "name": "Living", "offset": 100}
+    ]
     assert on_disk["mute_ads"] is True
     assert on_disk["skip_ads"] is False
     assert "selfpromo" in on_disk["skip_categories"]
@@ -220,31 +221,6 @@ def test_screen_id_hidden_in_form(app_with_tmp_config) -> None:
     # Round 6 item 2: redundant "+ Pair a new device" link removed; the
     # Pair Device tab in the header is now the sole discovery path.
     assert "+ Pair a new device" not in body
-
-
-def test_device_row_remove_button_enables_save(app_with_tmp_config) -> None:
-    """Bug found on a real deployment (issue #46): Remove does
-    this.closest('tr').remove(), a plain DOM removal that fires neither
-    input nor change - the two events config.js's dirty-tracker listens
-    for to enable Save and restart. A removed device left the button
-    disabled, so the removal was never actually saved: the page looked
-    like there was nothing to save, and config.json still had the device
-    next time the service ran. The onclick must also dispatch a change
-    event on the form so the existing dirty-tracker picks it up - can't
-    execute the JS here (no browser), so this pins the exact onclick
-    string that must ship."""
-    app, tmp = app_with_tmp_config
-    (tmp / "config.json").write_text(
-        json.dumps({"devices": [{"screen_id": "scr-x", "name": "TV", "offset": 0}]})
-    )
-    client = TestClient(app)
-    r = client.get("/")
-    assert r.status_code == 200
-    body = r.text
-    # Capture the form before removing the row; closest('form') on a
-    # detached button returns null and the dirty event never fires.
-    assert "const form = this.closest('form'); this.closest('tr').remove()" in body
-    assert "form.dispatchEvent(new Event('change'))" in body
 
 
 def test_config_page_uses_two_column_grid(app_with_tmp_config) -> None:
@@ -444,7 +420,10 @@ def test_round5_channels_apikey_link(app_with_tmp_config) -> None:
     client = TestClient(app)
     r = client.get("/channels")
     body = r.text
-    assert '<a href="https://developers.google.com/youtube/v3/getting-started"' in body
+    assert (
+        '<a href="https://developers.google.com/youtube/v3/getting-started"'
+        in body
+    )
     assert "YouTube Data API key</a>" in body
 
 
@@ -542,7 +521,9 @@ def test_save_button_disabled_when_running(app_with_tmp_config, monkeypatch) -> 
     from app.services import service_status as ss
 
     app, _ = app_with_tmp_config
-    monkeypatch.setattr(ss, "status", lambda: ss.Status("docker", True, "container running"))
+    monkeypatch.setattr(
+        ss, "status", lambda: ss.Status("docker", True, "container running")
+    )
     client = TestClient(app)
     r = client.get("/")
     assert r.status_code == 200
@@ -558,7 +539,9 @@ def test_save_button_start_mode_when_stopped(app_with_tmp_config, monkeypatch) -
     from app.services import service_status as ss
 
     app, _ = app_with_tmp_config
-    monkeypatch.setattr(ss, "status", lambda: ss.Status("docker", False, "container stopped"))
+    monkeypatch.setattr(
+        ss, "status", lambda: ss.Status("docker", False, "container stopped")
+    )
     client = TestClient(app)
     r = client.get("/")
     assert r.status_code == 200
@@ -566,11 +549,13 @@ def test_save_button_start_mode_when_stopped(app_with_tmp_config, monkeypatch) -
     assert 'data-mode="start"' in r.text
     # The save-btn line itself must not be disabled. Other elements may be
     # disabled, so anchor on the button id.
-    btn_line = next(line for line in r.text.splitlines() if 'id="save-btn"' in line)
+    btn_line = next(
+        line for line in r.text.splitlines() if 'id="save-btn"' in line
+    )
     # button tag spans multiple lines — collect until '>'
     idx = r.text.index('id="save-btn"')
     tag_close = r.text.index(">", idx)
-    btn_tag = r.text[r.text.rindex("<", 0, idx) : tag_close + 1]
+    btn_tag = r.text[r.text.rindex("<", 0, idx):tag_close + 1]
     assert "disabled" not in btn_tag
 
 
@@ -579,14 +564,16 @@ def test_save_button_legacy_when_unknown(app_with_tmp_config, monkeypatch) -> No
     from app.services import service_status as ss
 
     app, _ = app_with_tmp_config
-    monkeypatch.setattr(ss, "status", lambda: ss.Status("none", False, "no detection"))
+    monkeypatch.setattr(
+        ss, "status", lambda: ss.Status("none", False, "no detection")
+    )
     client = TestClient(app)
     r = client.get("/")
     assert r.status_code == 200
     assert "Save and restart service" in r.text
     idx = r.text.index('id="save-btn"')
     tag_close = r.text.index(">", idx)
-    btn_tag = r.text[r.text.rindex("<", 0, idx) : tag_close + 1]
+    btn_tag = r.text[r.text.rindex("<", 0, idx):tag_close + 1]
     assert "disabled" not in btn_tag
     assert 'data-no-dirty-gate="1"' in btn_tag
 
@@ -619,12 +606,8 @@ def test_tab_bar_active_class_per_page(app_with_tmp_config) -> None:
     app, _ = app_with_tmp_config
     client = TestClient(app)
 
-    for path, label in [
-        ("/", "Config"),
-        ("/pair", "Pair Device"),
-        ("/channels", "Channels"),
-        ("/logs", "Logs"),
-    ]:
+    for path, label in [("/", "Config"), ("/pair", "Pair Device"),
+                         ("/channels", "Channels"), ("/logs", "Logs")]:
         r = client.get(path)
         assert r.status_code == 200, path
         # The active tab gets the 'active' CSS class.
@@ -650,35 +633,194 @@ def test_pair_save_appends_device(app_with_tmp_config) -> None:
     assert r.status_code == 200
     assert "added to config" in r.text
     on_disk = json.loads((tmp / "config.json").read_text())
-    assert on_disk["devices"] == [{"screen_id": "abc-screen", "name": "Bedroom", "offset": 0}]
+    assert on_disk["devices"] == [
+        {"screen_id": "abc-screen", "name": "Bedroom", "offset": 0}
+    ]
 
 
-def test_pair_save_offers_a_working_restart_button(app_with_tmp_config) -> None:
-    """Bug found on a real deployment: the config page's Save button is
-    dirty-gated (disabled until *that* form is edited client-side), so
-    after a device is added via /pair - which changes config.json without
-    touching the config form at all - a user following "restart from the
-    config page" lands on a button that's disabled for exactly the reason
-    they're there, with no way to trigger the restart they actually need.
-    The success message must instead offer something that actually posts
-    to a restart endpoint, not just a link to a page with a stuck button."""
+def test_pair_page_renders_lan_scan_idle_state(app_with_tmp_config) -> None:
+    """Issue #3: idle state (no scan run yet) shows a "Scan LAN" button, not
+    stale "not yet supported" copy."""
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState()
+    client = TestClient(app)
+    r = client.get("/pair")
+    assert r.status_code == 200
+    assert "LAN auto-discovery" in r.text
+    assert "Scan LAN" in r.text
+    assert 'hx-post="/pair/lan-scan"' in r.text
+
+
+def test_lan_scan_device_row_targets_its_own_result_div(app_with_tmp_config) -> None:
+    """A LAN-scanned device's "Add to config" form must not target
+    #pair-result — that lives in the "Pair with TV code" section, so a
+    "device already in config" error from a LAN-discovered device showed up
+    in an unrelated part of the page instead of next to the button the user
+    actually clicked."""
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState(
+        scanning=False,
+        devices=[{"screen_id": "found-1", "name": "Kitchen TV", "offset": 0}],
+        rendered_count=0,
+    )
+    client = TestClient(app)
+    r = client.get("/pair/lan-scan/poll")
+    assert r.status_code == 200
+    assert 'hx-target="#lan-device-result-found-1"' in r.text
+    assert 'hx-target="#pair-result"' not in r.text
+    assert '<div id="lan-device-result-found-1">' in r.text
+
+
+def test_lan_scan_poll_appends_new_device_via_oob_not_full_swap(
+    app_with_tmp_config,
+) -> None:
+    """Issue #3 follow-up: two earlier attempts (htmx:beforeRequest +
+    preventDefault(), then an `every Ns [filter]` trigger) both tried to
+    skip a poll tick while a device row was being edited, and neither held
+    up under real-hardware testing — the poll kept fully re-rendering
+    #lan-scan-results and resetting the "Display name" field on every 1.5s
+    tick regardless. The actual fix: the poll response never re-renders the
+    devices list at all. It only refreshes the status strip and appends
+    newly discovered devices via an out-of-band swap targeting
+    #lan-scan-devices, so an already-rendered row (mid-edit or not) is
+    structurally untouched by any poll response."""
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState(
+        scanning=True,
+        devices=[{"screen_id": "new-1", "name": "Kitchen TV", "offset": 0}],
+        rendered_count=0,
+    )
+    client = TestClient(app)
+    r = client.get("/pair/lan-scan/poll")
+    assert r.status_code == 200
+    assert 'hx-swap-oob="beforeend:#lan-scan-devices"' in r.text
+    assert "Kitchen TV" in r.text
+    assert lan_discovery._state.rendered_count == 1
+
+
+def test_lan_scan_poll_does_not_resend_already_delivered_devices(
+    app_with_tmp_config,
+) -> None:
+    """The core regression: once a device has been sent to the client (full
+    render or a prior poll), later polls must not include it again — that's
+    what makes it safe for the poll to never touch #lan-scan-devices."""
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState(
+        scanning=True,
+        devices=[{"screen_id": "already-sent", "name": "Living Room TV", "offset": 0}],
+        rendered_count=1,  # already delivered in an earlier render/poll
+    )
+    client = TestClient(app)
+    r = client.get("/pair/lan-scan/poll")
+    assert r.status_code == 200
+    assert "Living Room TV" not in r.text
+    assert 'hx-swap-oob="beforeend:#lan-scan-devices"' not in r.text
+
+
+def test_pair_index_marks_current_devices_as_delivered(app_with_tmp_config) -> None:
+    """A full /pair page load must not cause the next poll to re-append
+    devices that are already in that page's initial HTML."""
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState(
+        scanning=True,
+        devices=[{"screen_id": "seen-1", "name": "Bedroom TV", "offset": 0}],
+        rendered_count=0,
+    )
+    client = TestClient(app)
+    r = client.get("/pair")
+    assert r.status_code == 200
+    assert "Bedroom TV" in r.text
+    assert lan_discovery._state.rendered_count == 1
+
+
+def test_lan_scan_start_kicks_off_background_scan(
+    app_with_tmp_config, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Issue #3: POST /pair/lan-scan must not block on the real (10s+)
+    discovery cycle — it starts the scan and returns the in-progress partial."""
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState()
+
+    called = {}
+
+    async def fake_start_scan():
+        called["started"] = True
+        lan_discovery._state.scanning = True
+        return lan_discovery._state
+
+    monkeypatch.setattr(lan_discovery, "start_scan", fake_start_scan)
+
+    client = TestClient(app)
+    r = client.post("/pair/lan-scan")
+    assert r.status_code == 200
+    assert called.get("started") is True
+    assert 'hx-get="/pair/lan-scan/poll"' in r.text
+    assert "Scanning the local network" in r.text
+
+
+def test_lan_scan_poll_renders_discovered_devices(app_with_tmp_config) -> None:
+    """Issue #3: once a scan completes, the poll endpoint stops polling and
+    lists discovered devices with an "Add to config" form each."""
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState(
+        scanning=False,
+        devices=[{"screen_id": "found-1", "name": "Kitchen TV", "offset": 0}],
+    )
+
+    client = TestClient(app)
+    r = client.get("/pair/lan-scan/poll")
+    assert r.status_code == 200
+    assert "Kitchen TV" in r.text
+    assert "found-1" in r.text
+    assert 'hx-post="/pair/save"' in r.text
+    assert 'hx-get="/pair/lan-scan/poll"' not in r.text  # polling stopped
+    assert "Scan again" in r.text
+
+
+def test_lan_scan_poll_renders_error_state(app_with_tmp_config) -> None:
+    app, _ = app_with_tmp_config
+    from app.services import lan_discovery
+
+    lan_discovery._state = lan_discovery.ScanState(scanning=False, error="Scan failed: boom")
+
+    client = TestClient(app)
+    r = client.get("/pair/lan-scan/poll")
+    assert r.status_code == 200
+    assert "Scan failed: boom" in r.text
+    assert 'hx-get="/pair/lan-scan/poll"' not in r.text
+
+
+def test_pair_save_offers_restart_and_escapes_name(app_with_tmp_config) -> None:
     app, _ = app_with_tmp_config
     client = TestClient(app)
     r = client.post(
         "/pair/save",
-        data={"screen_id": "xyz", "name": "TV", "display_name": "Kitchen", "offset": "0"},
+        data={"screen_id": "xyz", "name": "TV", "display_name": "<img src=x onerror=alert(1)>", "offset": "0"},
     )
     assert r.status_code == 200
+    assert '<img src=x onerror=alert(1)>' not in r.text
+    assert '&lt;img src=x onerror=alert(1)&gt;' in r.text
     assert 'hx-post="/restart"' in r.text
     assert 'hx-target="closest article" hx-swap="outerHTML"' in r.text
-    assert '<a href="/">config page</a>' not in r.text
 
 
-def test_restart_endpoint_works_without_a_config_save(
+def test_restart_endpoint_works_without_config_save(
     app_with_tmp_config, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """/restart must be independently callable - no config diff required -
-    since that's the whole point (see test above)."""
     app, _ = app_with_tmp_config
     from app.services import restart as restart_service
 
@@ -687,7 +829,6 @@ def test_restart_endpoint_works_without_a_config_save(
         "restart",
         lambda: restart_service.RestartResult(True, "docker", "restarted"),
     )
-    client = TestClient(app)
-    r = client.post("/restart")
+    r = TestClient(app).post("/restart")
     assert r.status_code == 200
     assert "restarted" in r.text

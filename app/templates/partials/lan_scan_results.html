@@ -1,0 +1,9 @@
+<div id="lan-scan-results">
+  {% include "partials/lan_scan_status.html" %}
+
+  <ul id="lan-scan-devices" style="list-style:none;padding:0;">
+    {% for device in lan_state.devices %}
+    {% include "partials/lan_scan_device_row.html" %}
+    {% endfor %}
+  </ul>
+</div>

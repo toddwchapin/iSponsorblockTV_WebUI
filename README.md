@@ -17,12 +17,20 @@ binding `127.0.0.1`.
 | Path | Purpose |
 |------|---------|
 | `/` | Edit `config.json`: skip categories, ad muting, devices, join name |
-| `/pair` | Pair a TV via 12-digit code (auto-hyphenates as you type) |
+| `/pair` | Pair a TV via 12-digit code (auto-hyphenates as you type), or scan the LAN via SSDP/DIAL for nearby YouTube-capable TVs |
 | `/channels` | Manage the channel whitelist; save the YouTube Data API key + proxy toggle |
 | `/logs` | Live tail of the iSponsorBlockTV service log (auto-refreshes every 5s) |
 | `/healthz` | JSON liveness/version probe |
 | `/status` | JSON service status (method, running, detail) |
 | `/status/badge` | HTML fragment used by the header status badge |
+
+> **Running in Docker?** `/pair`'s LAN auto-discovery (SSDP/DIAL) needs to
+> reach the LAN directly — it doesn't work from behind the default bridge
+> network's NAT (the M-SEARCH multicast either doesn't escape it, or a
+> replying TV's response doesn't route back correctly). Run the container
+> with `--network host` (or `network_mode: host` in Compose) if you want
+> LAN scanning to actually find devices; code-based pairing is unaffected
+> either way. Confirmed against a real Raspberry Pi deployment — see #3.
 
 ## Features
 
@@ -241,6 +249,11 @@ Pinned in [`pyproject.toml`](pyproject.toml).
   — async HTTP client used by the YouTube pairing + Data API calls.
 - [appdirs](https://github.com/ActiveState/appdirs) — locates the
   default `~/.config/iSponsorBlockTV/` data directory.
+- [ssdp](https://github.com/codingjoe/ssdp) — sends the SSDP M-SEARCH
+  request used by `/pair`'s LAN auto-discovery.
+- [xmltodict](https://github.com/martinblech/xmltodict) — parses the DIAL
+  device-description and YouTube-app-state XML returned during LAN
+  auto-discovery.
 
 ### Frontend (vendored or self-hosted)
 

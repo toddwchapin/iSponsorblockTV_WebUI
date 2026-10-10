@@ -1,0 +1,20 @@
+<div id="lan-scan-status"
+     {% if lan_state.scanning %}hx-get="/pair/lan-scan/poll" hx-trigger="every 1.5s" hx-swap="outerHTML"{% endif %}>
+  {% if lan_state.scanning %}
+  <p class="caption" aria-live="polite">
+    <span aria-busy="true">Scanning the local network…</span>
+    pairing a screen for the first time can take up to {{ launch_pair_timeout }}s per device.
+  </p>
+  {% elif lan_state.error %}
+  <p class="caption">{{ lan_state.error }}</p>
+  {% elif not lan_state.devices %}
+  <p class="caption">No devices found yet. Make sure the TV is on and on the same network segment as this Pi, or pair with a code above.</p>
+  {% endif %}
+
+  {% if not lan_state.scanning %}
+  <button type="button" class="secondary"
+          hx-post="/pair/lan-scan" hx-target="#lan-scan-results" hx-swap="outerHTML">
+    {{ 'Scan again' if lan_state.devices or lan_state.error else 'Scan LAN' }}
+  </button>
+  {% endif %}
+</div>

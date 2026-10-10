@@ -1,0 +1,5 @@
+{% include "partials/lan_scan_status.html" %}
+{% set oob = true %}
+{% for device in new_devices %}
+{% include "partials/lan_scan_device_row.html" %}
+{% endfor %}

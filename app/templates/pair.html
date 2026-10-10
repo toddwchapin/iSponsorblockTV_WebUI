@@ -36,8 +36,11 @@
 <article>
   <header><strong>LAN auto-discovery</strong></header>
   <p class="caption">
-    Not yet supported in the web UI — run <code>iSponsorBlockTV --setup</code>
-    on the Pi for LAN scan, or pair with a code above.
+    Scans the local network for YouTube-capable TVs via SSDP/DIAL — no code
+    needed. The TV must be on the same network segment as this Pi; some
+    routers block SSDP between SSIDs/VLANs, in which case pair with a code
+    above instead.
   </p>
+  {% include "partials/lan_scan_results.html" %}
 </article>
 {% endblock %}
