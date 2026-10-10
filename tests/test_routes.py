@@ -35,6 +35,18 @@ def test_healthz_reports_version(app_with_tmp_config) -> None:
     assert body == {"status": "ok", "version": __version__}
 
 
+def test_package_and_health_versions_match() -> None:
+    """Keep the image's /healthz version aligned with release metadata."""
+    import re
+
+    from app import __version__
+
+    project = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
+    declared = re.search(r'^version = "([^"]+)"$', project, re.MULTILINE)
+    assert declared is not None
+    assert __version__ == declared.group(1)
+
+
 def test_favicon_svg_served(app_with_tmp_config) -> None:
     """Issue #18: /favicon.svg returns the bundled icon."""
     app, _ = app_with_tmp_config
