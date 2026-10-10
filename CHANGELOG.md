@@ -7,6 +7,18 @@ breaking template / route changes are still possible.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-10
+
+### Container deployment (#49)
+- Added a multi-architecture Dockerfile and release-publishing workflow, with
+  PR test/build/smoke checks and deployment/security guidance in the README.
+
+### Fixed
+- Show daemon logs written to stderr (#42).
+- Offer a working restart button and visible result after pairing (#43).
+- Enable Save and restart after removing a device row (#47).
+- Escape device names in pairing responses and hide screen IDs from scan results (#41).
+
 ### Added (#3)
 - **LAN auto-discovery for pairing.** `/pair` can now scan the local
   network via SSDP/DIAL instead of requiring a 12-digit TV code: `Scan
