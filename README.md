@@ -77,16 +77,17 @@ The UI reads and writes the same `config.json` iSponsorBlockTV uses
 To run it as a system service so it survives reboots, see
 [**docs/SYSTEMD.md**](docs/SYSTEMD.md).
 
-## Container deployment (after an image is published)
+## Container deployment
 
-Published releases use `ghcr.io/toddwchapin/isponsorblocktv-webui:<version>`.
+Published releases use `ghcr.io/toddwchapin/isponsorblocktv-webui:0.3.0`
+(replace the tag when upgrading to a newer release).
 The WebUI must mount the **same data directory** as the iSponsorBlockTV daemon;
 otherwise saving settings changes the wrong `config.json`. Example on Linux:
 
 ```yaml
 services:
   webui:
-    image: ghcr.io/toddwchapin/isponsorblocktv-webui:<version>
+    image: ghcr.io/toddwchapin/isponsorblocktv-webui:0.3.0
     network_mode: host # needed for SSDP LAN scanning on Linux
     environment:
       WEBUI_HOST: 0.0.0.0
