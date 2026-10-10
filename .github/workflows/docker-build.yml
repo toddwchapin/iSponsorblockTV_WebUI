@@ -1,0 +1,129 @@
+name: Build and push Docker image
+
+on:
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run tests
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pytest -q
+      - name: Build container
+        run: docker build -t isponsorblocktv-webui:verify .
+      - name: Smoke test
+        run: |
+          docker run -d --name webui-smoke -p 18099:8099 \
+            -e WEBUI_HOST=0.0.0.0 -e WEBUI_PASSWORD=ci-smoke-test \
+            isponsorblocktv-webui:verify
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:18099/healthz; then exit 0; fi
+            sleep 1
+          done
+          docker logs webui-smoke
+          exit 1
+
+  build:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/isponsorblocktv-webui
+          tags: |
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A successful build only proves the pip install and file layout are
+      # valid, not that the app actually starts. Boots the just-pushed
+      # image on both platforms and confirms /healthz responds - by
+      # digest, not a tag, so this is unambiguously the image this job
+      # just built.
+      - name: Verify the image boots and serves /healthz
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/isponsorblocktv-webui@${{ steps.build.outputs.digest }}"
+          for platform in linux/amd64 linux/arm64; do
+            echo "::group::Verifying boot on ${platform}"
+            docker run -d --name healthz-check --platform "${platform}" \
+              -p 18099:8099 -e WEBUI_HOST=0.0.0.0 -e WEBUI_PASSWORD=ci-smoke-test \
+              "${IMAGE}"
+
+            # 40x1s, not 15 - found in production (this exact check's
+            # first real CI run): the amd64 leg answers in ~4s (native to
+            # the runner), but arm64 was still starting up under QEMU
+            # emulation at the 15s mark and the check failed as a false
+            # negative, not a real boot failure.
+            ok=""
+            for i in $(seq 1 40); do
+              if body="$(curl -fsS http://localhost:18099/healthz 2>/dev/null)"; then
+                ok="${body}"
+                break
+              fi
+              sleep 1
+            done
+
+            docker logs healthz-check || true
+            docker rm -f healthz-check >/dev/null 2>&1 || true
+            # See obico-server's own build-images.yaml (hibikipr/obico-server
+            # PR #3) for why this matters: without it, the next platform's
+            # pull of the same digest reference fails outright with
+            # "docker: cannot overwrite digest" - the local image store
+            # ties a digest to one specific image's content, and two
+            # different real images (amd64 vs arm64) can't both live under
+            # that same reference at once.
+            docker rmi "${IMAGE}" >/dev/null 2>&1 || true
+
+            if [ -z "${ok}" ]; then
+              echo "::error::${platform}: container never responded on /healthz"
+              exit 1
+            fi
+            echo "${platform}: /healthz -> ${ok}"
+            echo "::endgroup::"
+          done
