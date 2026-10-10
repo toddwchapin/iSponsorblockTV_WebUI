@@ -77,6 +77,35 @@ The UI reads and writes the same `config.json` iSponsorBlockTV uses
 To run it as a system service so it survives reboots, see
 [**docs/SYSTEMD.md**](docs/SYSTEMD.md).
 
+## Container deployment (after an image is published)
+
+Published releases use `ghcr.io/toddwchapin/isponsorblocktv-webui:<version>`.
+The WebUI must mount the **same data directory** as the iSponsorBlockTV daemon;
+otherwise saving settings changes the wrong `config.json`. Example on Linux:
+
+```yaml
+services:
+  webui:
+    image: ghcr.io/toddwchapin/isponsorblocktv-webui:<version>
+    network_mode: host # needed for SSDP LAN scanning on Linux
+    environment:
+      WEBUI_HOST: 0.0.0.0
+      WEBUI_PASSWORD: ${WEBUI_PASSWORD:?Set WEBUI_PASSWORD in your environment}
+      WEBUI_DATA_DIR: /data
+    volumes:
+      - ./data:/data # same host directory mounted at /app/data in iSponsorBlockTV
+    restart: unless-stopped
+```
+
+Open port 8099 on the host. On a shared network, use a TLS reverse proxy;
+the built-in password does not encrypt traffic. If you need the WebUI to
+restart the daemon or show its Docker logs, it also needs access to the Docker
+socket. Mounting `/var/run/docker.sock` grants **host-level Docker control**
+(even with a read-only bind); only do this if you accept that risk. Without
+the socket, save the config in the UI and restart the daemon yourself.
+Docker host networking on macOS does not provide the same LAN multicast
+discovery behavior as a native Linux host; use TV-code pairing as fallback.
+
 ## Update
 
 `git pull` does not update the pipx venv. Always reinstall after a pull:
